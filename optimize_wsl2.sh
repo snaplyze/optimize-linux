@@ -163,7 +163,6 @@ esac
 ################################################################################
 # 2. Interactive Configuration Menu
 ################################################################################
-section "Step 2: Configuration Selection"
 
 # Default configuration flags
 CONFIGURE_WSL_CONF=true
@@ -183,7 +182,7 @@ PERFORMANCE_TUNING=true
 show_menu() {
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-    echo -e "${CYAN}  WSL2 OPTIMIZATION: Debian ${VERSION_ID:-?} (${VERSION_CODENAME^:-?})${NC}"
+    echo -e "${CYAN}  Step 2: Configuration Selection${NC}"
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
     echo ""
     echo -e "${YELLOW}Before starting, ensure in PowerShell:${NC}"
