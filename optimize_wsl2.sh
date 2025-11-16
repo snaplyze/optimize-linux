@@ -827,7 +827,7 @@ trim_at = '.'
 truncation_length = 3
 truncate_to_repo = true
 style = 'blue bold'
-read_only = " 󰌾"
+read_only = " 🔒"
 format = 'in [$path]($style)[$read_only]($read_only_style) '
 
 [character]
