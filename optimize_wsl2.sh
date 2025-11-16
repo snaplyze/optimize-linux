@@ -171,7 +171,6 @@ UPDATE_SYSTEM=true
 INSTALL_BASE_UTILS=true
 CREATE_USER=false
 CONFIGURE_LOCALES=true
-CONFIGURE_TIMEZONE=true
 INSTALL_ZSH=true
 INSTALL_DOCKER=true
 INSTALL_NVIDIA=false
@@ -183,9 +182,9 @@ PERFORMANCE_TUNING=true
 # Interactive menu
 show_menu() {
     clear
-    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${NC}"
-    printf "${CYAN}║ %-63s ║${NC}\n" "WSL2 OPTIMIZATION: Debian ${VERSION_ID:-?} (${VERSION_CODENAME^:-?})"
-    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${CYAN}  WSL2 OPTIMIZATION: Debian ${VERSION_ID:-?} (${VERSION_CODENAME^:-?})${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
     echo ""
     echo -e "${YELLOW}Before starting, ensure in PowerShell:${NC}"
     echo -e "${YELLOW}1) wsl --update; 2) wsl --set-default-version 2;${NC}"
@@ -214,7 +213,6 @@ show_menu() {
     prompt_yn "Install base utilities (git, curl, htop, etc.)" true && INSTALL_BASE_UTILS=true || INSTALL_BASE_UTILS=false
     prompt_yn "Create new user with sudo rights" false && CREATE_USER=true || CREATE_USER=false
     prompt_yn "Configure locales (ru_RU, en_US)" true && CONFIGURE_LOCALES=true || CONFIGURE_LOCALES=false
-    prompt_yn "Configure timezone" true && CONFIGURE_TIMEZONE=true || CONFIGURE_TIMEZONE=false
 
     echo ""
     # Shell and development
@@ -406,24 +404,30 @@ if $CREATE_USER; then
     else
         if id "$NEW_USER" &>/dev/null; then
             warn "User $NEW_USER already exists. Skipping creation but will configure..."
+            # Offer to change password for existing user
+            read -p "Do you want to change password for existing user $NEW_USER? (y/N): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                passwd "$NEW_USER" && log "Password changed for $NEW_USER" || warn "Failed to change password"
+            fi
         else
             # Create user
             adduser --gecos "" "$NEW_USER"
             usermod -aG sudo "$NEW_USER"
             log "User $NEW_USER created and added to sudo group"
         fi
-        
+
         # Configure passwordless sudo
         echo "$NEW_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$NEW_USER
         chmod 440 /etc/sudoers.d/$NEW_USER
         log "Passwordless sudo configured for $NEW_USER"
-        
+
         # Update wsl.conf with default user
         if $CONFIGURE_WSL_CONF; then
             sed -i "s/^default=.*/default=$NEW_USER/" /etc/wsl.conf
             log "Set $NEW_USER as default user in wsl.conf"
         fi
-        
+
         # Store for later use
         DOCKER_USER=$NEW_USER
     fi
@@ -497,8 +501,10 @@ check_dialog() {
         sed -i "s/^# *\(${locale} UTF-8\)/\1/" /etc/locale.gen
     done
 
-    # Generate locales without LC_ALL set
-    LC_ALL=C.UTF-8 locale-gen
+    # Generate locales with C.UTF-8 to avoid LC_ALL=C conflicts
+    unset LC_ALL
+    unset LANG
+    locale-gen
 
     # Update locale configuration file
     cat > /etc/default/locale <<EOF
@@ -531,61 +537,9 @@ else
 fi
 
 ################################################################################
-# 7. Timezone Configuration
+# 7. Zsh and Starship Installation
 ################################################################################
-section "Step 7: Timezone Configuration"
-
-if $CONFIGURE_TIMEZONE; then
-    # Get current timezone
-    if [ -L /etc/localtime ]; then
-        CURRENT_TZ=$(readlink /etc/localtime | sed 's|/usr/share/zoneinfo/||')
-    else
-        CURRENT_TZ="Unknown"
-    fi
-
-    info "Current timezone: $CURRENT_TZ"
-    info "Examples: Europe/Moscow, America/New_York, Asia/Tokyo, UTC"
-    read -p "Enter timezone (press Enter to keep current): " NEW_TIMEZONE
-
-    if [ -n "$NEW_TIMEZONE" ]; then
-        # Validate timezone
-        if [ -f "/usr/share/zoneinfo/$NEW_TIMEZONE" ]; then
-            if has_systemd && command -v timedatectl >/dev/null 2>&1; then
-                # Use timedatectl if systemd is available
-                timedatectl set-timezone "$NEW_TIMEZONE" 2>/dev/null && log "Timezone set to: $NEW_TIMEZONE" || {
-                    # Fallback to manual method
-                    ln -sf "/usr/share/zoneinfo/$NEW_TIMEZONE" /etc/localtime
-                    echo "$NEW_TIMEZONE" > /etc/timezone
-                    log "Timezone set to: $NEW_TIMEZONE (manual method)"
-                }
-            else
-                # Manual timezone configuration for non-systemd environments
-                ln -sf "/usr/share/zoneinfo/$NEW_TIMEZONE" /etc/localtime
-                echo "$NEW_TIMEZONE" > /etc/timezone
-                log "Timezone set to: $NEW_TIMEZONE"
-            fi
-        else
-            warn "Invalid timezone '$NEW_TIMEZONE'. Timezone file not found."
-            warn "Keeping current timezone."
-        fi
-    else
-        log "Keeping current timezone: $CURRENT_TZ"
-    fi
-
-    # Enable NTP if systemd is available
-    if has_systemd && command -v timedatectl >/dev/null 2>&1; then
-        timedatectl set-ntp true 2>/dev/null && log "NTP synchronization enabled" || warn "Could not enable NTP"
-    else
-        info "NTP configuration requires systemd - skipping (WSL2 syncs time with Windows host)"
-    fi
-else
-    log "Skipping timezone configuration"
-fi
-
-################################################################################
-# 8. Zsh and Starship Installation
-################################################################################
-section "Step 8: Zsh + Starship Installation"
+section "Step 7: Zsh + Starship Installation"
 
 if $INSTALL_ZSH; then
     log "Installing Zsh and Starship..."
@@ -975,9 +929,9 @@ else
 fi
 
 ################################################################################
-# 9. SSH Agent Configuration
+# 8. SSH Agent Configuration
 ################################################################################
-section "Step 9: SSH Agent Configuration"
+section "Step 8: SSH Agent Configuration"
 
 if $CONFIGURE_SSH_AGENT; then
     log "Configuring SSH agent for WSL2..."
@@ -1012,9 +966,9 @@ else
 fi
 
 ################################################################################
-# 10. Docker Installation
+# 9. Docker Installation
 ################################################################################
-section "Step 10: Docker Installation"
+section "Step 9: Docker Installation"
 
 if $INSTALL_DOCKER; then
     log "Installing Docker CE..."
@@ -1096,9 +1050,9 @@ else
 fi
 
 ################################################################################
-# 11. NVIDIA Container Toolkit and CUDA
+# 10. NVIDIA Container Toolkit and CUDA
 ################################################################################
-section "Step 11: NVIDIA Support Installation"
+section "Step 10: NVIDIA Support Installation"
 
 if $INSTALL_NVIDIA; then
     log "Installing NVIDIA Container Toolkit..."
@@ -1143,14 +1097,30 @@ if $INSTALL_NVIDIA; then
         tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
     
     safe_install nvidia-container-toolkit
-    
-    # Configure NVIDIA runtime
+
+    # Configure NVIDIA runtime - only if Docker is installed
     if command -v nvidia-ctk >/dev/null 2>&1; then
-        nvidia-ctk runtime configure --runtime=docker
-        if has_systemd; then
-            systemctl restart docker
+        if command -v docker >/dev/null 2>&1; then
+            # Ensure Docker daemon is valid
+            if [ ! -f /etc/docker/daemon.json ] || ! python3 -m json.tool /etc/docker/daemon.json >/dev/null 2>&1; then
+                warn "Docker daemon.json is missing or invalid, creating default..."
+                mkdir -p /etc/docker
+                echo '{}' > /etc/docker/daemon.json
+            fi
+
+            nvidia-ctk runtime configure --runtime=docker 2>/dev/null || {
+                warn "Failed to configure NVIDIA runtime with nvidia-ctk, continuing..."
+            }
+
+            if has_systemd; then
+                systemctl daemon-reload 2>/dev/null || true
+                systemctl restart docker 2>/dev/null || warn "Failed to restart Docker service"
+            fi
+            log "NVIDIA Container Toolkit configured"
+        else
+            warn "Docker not installed - skipping NVIDIA runtime configuration"
+            warn "Install Docker first, then run: sudo nvidia-ctk runtime configure --runtime=docker"
         fi
-        log "NVIDIA Container Toolkit configured"
     else
         warn "nvidia-ctk not found - installation may have failed"
     fi
@@ -1185,9 +1155,9 @@ else
 fi
 
 ################################################################################
-# 12. Performance Tuning
+# 11. Performance Tuning
 ################################################################################
-section "Step 12: Performance Tuning"
+section "Step 11: Performance Tuning"
 
 if $PERFORMANCE_TUNING; then
     log "Applying performance optimizations..."
@@ -1268,9 +1238,9 @@ else
 fi
 
 ################################################################################
-# 13. Automatic Security Updates
+# 12. Automatic Security Updates
 ################################################################################
-section "Step 13: Automatic Security Updates"
+section "Step 12: Automatic Security Updates"
 
 if $ENABLE_AUTO_UPDATES; then
     log "Configuring automatic security updates..."
@@ -1304,9 +1274,9 @@ else
 fi
 
 ################################################################################
-# 14. Create Utility Scripts
+# 13. Create Utility Scripts
 ################################################################################
-section "Step 14: Creating Utility Scripts"
+section "Step 13: Creating Utility Scripts"
 
 # WSL2 Performance Monitor
 cat > /usr/local/bin/wsl2-monitor.sh <<'SCRIPT'
@@ -1419,9 +1389,9 @@ chmod +x /etc/cron.weekly/wsl2-cleanup
 log "Utility scripts created"
 
 ################################################################################
-# 15. Final Cleanup
+# 14. Final Cleanup
 ################################################################################
-section "Step 15: Final Cleanup"
+section "Step 14: Final Cleanup"
 
 log "Performing final cleanup..."
 
@@ -1436,9 +1406,9 @@ journalctl --vacuum-time=3d
 log "Final cleanup completed"
 
 ################################################################################
-# 16. Final Summary and Instructions
+# 15. Final Summary and Instructions
 ################################################################################
-section "Step 16: Installation Complete"
+section "Step 15: Installation Complete"
 
 echo ""
 echo -e "${GREEN}================================================================================${NC}"
