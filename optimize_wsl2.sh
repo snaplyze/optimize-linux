@@ -997,8 +997,9 @@ install_go() {
     log "Latest Go version: $go_version"
 
     # Build download URL
-    go_download_url="https://go.dev/dl/go${go_version}.${go_os}-${go_arch}.tar.gz"
-    go_checksum_url="https://go.dev/dl/go${go_version}.${go_os}-${go_arch}.tar.gz.sha256"
+    # Use dl.google.com for direct downloads (go.dev redirects and causes issues)
+    go_download_url="https://dl.google.com/go/go${go_version}.${go_os}-${go_arch}.tar.gz"
+    go_checksum_url="https://dl.google.com/go/go${go_version}.${go_os}-${go_arch}.tar.gz.sha256"
 
     # Create temporary directory
     temp_dir=$(mktemp -d)
