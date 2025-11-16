@@ -848,9 +848,9 @@ case "$ARCH" in
 esac
 
 # Fetch latest Go version
-GO_VERSION=$(curl -s https://go.dev/VERSION 2>/dev/null | grep -oP '(?<=^go)[0-9.]+' | head -1)
+GO_VERSION=$(curl -s https://go.dev/VERSION?m=text 2>/dev/null | head -1 | sed 's/go//')
 if [ -z "$GO_VERSION" ]; then
-    GO_VERSION="1.23.0"  # fallback version
+    GO_VERSION="1.25.4"  # fallback version
     warn "Could not detect latest Go version, using fallback: $GO_VERSION"
 fi
 
