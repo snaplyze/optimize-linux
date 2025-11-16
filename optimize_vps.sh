@@ -125,7 +125,7 @@ log "=== Starting VPS Optimization ==="
 ################################################################################
 # 1. Detect OS Version
 ################################################################################
-log "Step 1: Detecting operating system..."
+section "Step 1: Detecting operating system..."
 
 # Detect OS
 if [ -f /etc/os-release ]; then
@@ -164,7 +164,7 @@ esac
 ################################################################################
 # 2. User Creation and SSH Key Setup
 ################################################################################
-log "Step 2: User account setup..."
+section "Step 2: User account setup..."
 
 echo ""
 info "We need to create a new sudo user for secure access."
@@ -236,7 +236,7 @@ read -p "Press Enter once you've verified SSH access works..."
 ################################################################################
 # 3. System Localization Settings
 ################################################################################
-log "Step 3: Configuring system localization..."
+section "Step 3: Configuring system localization..."
 
 echo ""
 info "Setting up system locale, hostname, and timezone..."
@@ -261,8 +261,6 @@ check_dialog() {
         LOCALE_CHOICE=$(dialog --title "Locale Selection" --menu "Select locale:" --radiolist "1" "English (en_US.UTF-8)" "2" "Russian (ru_RU.UTF-8)" "3" "Both (en_US.UTF-8 + ru_RU.UTF-8)" --default "1")
     else
         read -p "Enter choice [1-3]: " LOCALE_CHOICE
-    fi
-    fi
     fi
 
 case $LOCALE_CHOICE in
@@ -435,7 +433,7 @@ echo ""
 ################################################################################
 # 4. Zsh and Starship Installation
 ################################################################################
-log "Step 4: Installing and configuring Zsh + Starship..."
+section "Step 4: Installing and configuring Zsh + Starship..."
 
 echo ""
 info "Installing Zsh and Starship for better shell experience..."
@@ -1003,7 +1001,7 @@ fi
 ################################################################################
 # 6. System Update and Essential Packages
 ################################################################################
-log "Step 6: Updating system and installing essential packages..."
+log "Step 8: Updating system and installing essential packages..."
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
@@ -1066,7 +1064,7 @@ log "Package aliases created"
 ################################################################################
 # 8. XanMod Kernel Installation
 ################################################################################
-log "Step 8: Checking XanMod kernel compatibility..."
+log "Step 9: Checking XanMod kernel compatibility..."
 
 # XanMod supports x86_64 (amd64) architecture
 if [[ "$CPU_ARCH" == "x86_64" ]]; then
@@ -1149,7 +1147,7 @@ fi
 ################################################################################
 # 8. Docker and Docker Compose Installation
 ################################################################################
-log "Step 8: Installing Docker and Docker Compose..."
+log "Step 10: Installing Docker and Docker Compose..."
 
 # Remove old Docker versions if present
 for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
@@ -1260,7 +1258,7 @@ log "Docker and Docker Compose installation complete"
 ################################################################################
 # 9. Kernel Parameters Optimization (sysctl)
 ################################################################################
-log "Step 9: Optimizing kernel parameters..."
+log "Step 11: Optimizing kernel parameters..."
 
 # Backup original sysctl.conf
 cp /etc/sysctl.conf /etc/sysctl.conf.backup.$(date +%F) 2>/dev/null || true
@@ -1325,7 +1323,7 @@ sysctl -p /etc/sysctl.d/99-vps-optimization.conf
 ################################################################################
 # 10. Swap Optimization
 ################################################################################
-log "Step 24: Setting up swap file..."
+log "Step 12: Setting up swap file..."
 
 # Remove existing swap if present
 if swapon --show | grep -q "/swapfile"; then
@@ -1354,7 +1352,7 @@ log "Swap file created and enabled (${SWAP_SIZE}GB, swappiness=$SWAPPINESS)"
 ################################################################################
 # 11. Firewall Configuration (UFW)
 ################################################################################
-log "Step 11: Configuring firewall (UFW)..."
+log "Step 13: Configuring firewall (UFW)..."
 
 # Reset UFW to default
 ufw --force reset
@@ -1380,7 +1378,7 @@ log "Firewall configured and enabled"
 ################################################################################
 # 12. Fail2Ban Configuration
 ################################################################################
-log "Step 12: Configuring Fail2Ban..."
+log "Step 14: Configuring Fail2Ban..."
 
 systemctl enable fail2ban
 systemctl start fail2ban
@@ -1406,7 +1404,7 @@ systemctl restart fail2ban
 ################################################################################
 # 25. System Limits Optimization
 ################################################################################
-log "Step 25: Optimizing system limits..."
+log "Step 15: Optimizing system limits..."
 
 cat > /etc/security/limits.d/99-vps-limits.conf <<EOF
 # VPS Limits Optimization
@@ -1423,7 +1421,7 @@ EOF
 ################################################################################
 # 14. Automatic Security Updates
 ################################################################################
-log "Step 14: Configuring automatic security updates..."
+log "Step 16: Configuring automatic security updates..."
 
 cat > /etc/apt/apt.conf.d/50unattended-upgrades <<EOF
 Unattended-Upgrade::Allowed-Origins {
@@ -1448,7 +1446,7 @@ EOF
 ################################################################################
 # 15. Journal Log Size Limit
 ################################################################################
-log "Step 15: Limiting systemd journal size..."
+log "Step 17: Limiting systemd journal size..."
 
 mkdir -p /etc/systemd/journald.conf.d/
 cat > /etc/systemd/journald.conf.d/00-journal-size.conf <<EOF
@@ -1463,7 +1461,7 @@ systemctl restart systemd-journald
 ################################################################################
 # 24. SSH Hardening
 ################################################################################
-log "Step 24: Hardening SSH configuration..."
+log "Step 18: Hardening SSH configuration..."
 
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup.$(date +%F) 2>/dev/null || true
 
@@ -1503,7 +1501,7 @@ fi
 ################################################################################
 # 25. Optimize tmpfs
 ################################################################################
-log "Step 25: Optimizing tmpfs..."
+log "Step 19: Optimizing tmpfs..."
 
 # Check if entries already exist to avoid duplicates
 if ! grep -q "tmpfs /tmp" /etc/fstab; then
@@ -1516,7 +1514,7 @@ fi
 ################################################################################
 # 24. Disable Unnecessary Services
 ################################################################################
-log "Step 24: Disabling unnecessary services..."
+log "Step 20: Disabling unnecessary services..."
 
 SERVICES_TO_DISABLE=(
     "bluetooth.service"
@@ -1535,7 +1533,7 @@ done
 ################################################################################
 # 25. I/O Scheduler Optimization
 ################################################################################
-log "Step 25: Optimizing I/O scheduler..."
+log "Step 21: Optimizing I/O scheduler..."
 
 cat > /etc/udev/rules.d/60-ioschedulers.conf <<EOF
 # Set deadline scheduler for SSDs and none for NVMe
@@ -1546,7 +1544,7 @@ EOF
 ################################################################################
 # 24. Create Monitoring Script
 ################################################################################
-log "Step 24: Creating monitoring script..."
+log "Step 22: Creating monitoring script..."
 
 cat > /usr/local/bin/vps-monitor.sh <<'SCRIPT'
 #!/bin/bash
@@ -1590,7 +1588,7 @@ chmod +x /usr/local/bin/vps-monitor.sh
 ################################################################################
 # 21. Create Cleanup Script
 ################################################################################
-log "Step 21: Creating cleanup script..."
+log "Step 23: Creating cleanup script..."
 
 cat > /usr/local/bin/vps-cleanup.sh <<'SCRIPT'
 #!/bin/bash
@@ -1657,7 +1655,7 @@ chmod +x /usr/local/bin/network-test.sh
 ################################################################################
 # 23. System Information Script
 ################################################################################
-log "Step 23: Creating system information script..."
+log "Step 25: Creating system information script..."
 
 cat > /usr/local/bin/vps-info.sh <<'SCRIPT'
 #!/bin/bash
