@@ -319,12 +319,12 @@ LANGUAGE=${DEFAULT_LOCALE%%.*}
 LC_ALL=$DEFAULT_LOCALE
 EOF
 
-# Export for current session
-export LANG=$DEFAULT_LOCALE
-export LC_ALL=$DEFAULT_LOCALE
-export LANGUAGE=${DEFAULT_LOCALE%%.*}
+# Export for current session using safe C.UTF-8 to avoid warnings
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+export LANGUAGE=en
 
-# Write to profile for all users
+# Write to profile for all users (will be applied on next login)
 cat > /etc/profile.d/locale.sh <<EOF
 export LANG=$DEFAULT_LOCALE
 export LC_ALL=$DEFAULT_LOCALE
@@ -332,9 +332,6 @@ export LANGUAGE=${DEFAULT_LOCALE%%.*}
 EOF
 
 chmod +x /etc/profile.d/locale.sh
-
-# Source the new locale settings
-. /etc/profile.d/locale.sh 2>/dev/null || true
 
 log "Default locale set to: $DEFAULT_LOCALE"
 log "Locale will be fully applied after reboot or re-login"
