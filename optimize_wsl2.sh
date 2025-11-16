@@ -290,7 +290,8 @@ enabled=true
 appendWindowsPath=true
 
 [user]
-# Default user (will be set if created)
+# Default user - login with this user instead of root
+# Will be set to the created user, or leave empty to login as root
 default=
 
 [filesystem]
@@ -408,26 +409,54 @@ if $CREATE_USER; then
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 passwd "$NEW_USER" && log "Password changed for $NEW_USER" || warn "Failed to change password"
             fi
+
+            # Ensure user is in sudo group
+            if ! groups "$NEW_USER" | grep -q sudo; then
+                usermod -aG sudo "$NEW_USER"
+                log "Added $NEW_USER to sudo group"
+            fi
         else
             # Create user
-            adduser --gecos "" "$NEW_USER"
-            usermod -aG sudo "$NEW_USER"
-            log "User $NEW_USER created and added to sudo group"
+            adduser --gecos "" --disabled-password "$NEW_USER" || {
+                error "Failed to create user $NEW_USER"
+                CREATE_USER=false
+            }
+            if [ $CREATE_USER = true ]; then
+                usermod -aG sudo "$NEW_USER"
+                log "User $NEW_USER created and added to sudo group"
+
+                # Set password for new user
+                log "Setting password for new user $NEW_USER..."
+                passwd "$NEW_USER" || warn "Failed to set password"
+            fi
         fi
 
-        # Configure passwordless sudo
-        echo "$NEW_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$NEW_USER
-        chmod 440 /etc/sudoers.d/$NEW_USER
-        log "Passwordless sudo configured for $NEW_USER"
+        # Only configure if user was created/configured successfully
+        if [ $CREATE_USER = true ]; then
+            # Configure passwordless sudo
+            echo "$NEW_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$NEW_USER
+            chmod 440 /etc/sudoers.d/$NEW_USER
+            log "Passwordless sudo configured for $NEW_USER"
 
-        # Update wsl.conf with default user
-        if $CONFIGURE_WSL_CONF; then
-            sed -i "s/^default=.*/default=$NEW_USER/" /etc/wsl.conf
-            log "Set $NEW_USER as default user in wsl.conf"
+            # Verify user home directory exists
+            USER_HOME=$(eval echo ~$NEW_USER)
+            if [ ! -d "$USER_HOME" ]; then
+                warn "User home directory $USER_HOME does not exist, creating..."
+                mkdir -p "$USER_HOME"
+                chown -R "$NEW_USER:$NEW_USER" "$USER_HOME"
+                chmod 700 "$USER_HOME"
+            fi
+
+            # Update wsl.conf with default user
+            if $CONFIGURE_WSL_CONF; then
+                sed -i "s/^default=.*/default=$NEW_USER/" /etc/wsl.conf
+                log "Set $NEW_USER as default user in wsl.conf"
+                info "Default user will apply after WSL restart (wsl --shutdown)"
+            fi
+
+            # Store for later use
+            DOCKER_USER=$NEW_USER
         fi
-
-        # Store for later use
-        DOCKER_USER=$NEW_USER
     fi
 else
     # Use current user or default
@@ -1547,19 +1576,28 @@ echo -e "${YELLOW}IMPORTANT NEXT STEPS:${NC}"
 echo -e "${CYAN}================================================================================${NC}"
 echo ""
 
-if $CONFIGURE_WSL_CONF; then
-    warn "1. Run 'wsl --shutdown' in Windows PowerShell to apply WSL2 configuration"
+if [ -n "$NEW_USER" ] && $CREATE_USER; then
+    warn "1. Run 'wsl --shutdown' in Windows PowerShell to apply default user"
+    warn "   After: you will login as $NEW_USER instead of root"
     warn "2. Restart WSL2 distribution"
+    echo ""
+fi
+
+if $CONFIGURE_WSL_CONF; then
+    warn "Run 'wsl --shutdown' in Windows PowerShell to apply WSL2 configuration"
+    warn "Then restart WSL2 distribution"
 fi
 
 if $INSTALL_ZSH; then
-    info "3. New shell session will start with Zsh + Starship"
-    info "   Features: autosuggestions (gray text), syntax highlighting, Git integration"
-    info "   WSL2 functions: explorer(), cmd(), powershell(), wslperf()"
+    info ""
+    info "✓ New shell session will start with Zsh + Starship"
+    info "  Features: autosuggestions (gray text), syntax highlighting, Git integration"
+    info "  WSL2 functions: explorer(), cmd(), powershell(), wslperf()"
 fi
 
 if $INSTALL_DOCKER && [ -n "$DOCKER_USER" ]; then
-    info "4. Docker group membership requires relogin or run: newgrp docker"
+    info ""
+    info "✓ Docker group membership requires relogin or run: newgrp docker"
 fi
 
 echo ""
