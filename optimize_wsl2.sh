@@ -371,7 +371,7 @@ if $INSTALL_BASE_UTILS; then
         "lsb-release"
         "apt-transport-https"
         "xdg-user-dirs"
-        "neofetch"
+        "fastfetch"
         "bc"
     )
     
@@ -496,24 +496,36 @@ check_dialog() {
         fi
         sed -i "s/^# *\(${locale} UTF-8\)/\1/" /etc/locale.gen
     done
-    
-    locale-gen
-    update-locale LANG=$DEFAULT_LOCALE LC_ALL=$DEFAULT_LOCALE LANGUAGE=${DEFAULT_LOCALE%%.*}
-    
+
+    # Generate locales without LC_ALL set
+    LC_ALL=C.UTF-8 locale-gen
+
+    # Update locale configuration file
+    cat > /etc/default/locale <<EOF
+LANG=$DEFAULT_LOCALE
+LANGUAGE=${DEFAULT_LOCALE%%.*}
+LC_ALL=$DEFAULT_LOCALE
+EOF
+
     # Export for current session
     export LANG=$DEFAULT_LOCALE
     export LC_ALL=$DEFAULT_LOCALE
     export LANGUAGE=${DEFAULT_LOCALE%%.*}
-    
+
     # Write to profile for all users
     cat > /etc/profile.d/locale.sh <<EOF
 export LANG=$DEFAULT_LOCALE
 export LC_ALL=$DEFAULT_LOCALE
 export LANGUAGE=${DEFAULT_LOCALE%%.*}
 EOF
-    
+
     chmod +x /etc/profile.d/locale.sh
+
+    # Source the new locale settings
+    . /etc/profile.d/locale.sh 2>/dev/null || true
+
     log "Locale configured: $DEFAULT_LOCALE"
+    info "Locale will be fully applied after WSL restart"
 else
     log "Skipping locale configuration"
 fi
@@ -524,22 +536,48 @@ fi
 section "Step 7: Timezone Configuration"
 
 if $CONFIGURE_TIMEZONE; then
-    info "Current timezone: $(timedatectl show --property=Timezone --value 2>/dev/null || echo 'Unknown')"
+    # Get current timezone
+    if [ -L /etc/localtime ]; then
+        CURRENT_TZ=$(readlink /etc/localtime | sed 's|/usr/share/zoneinfo/||')
+    else
+        CURRENT_TZ="Unknown"
+    fi
+
+    info "Current timezone: $CURRENT_TZ"
     info "Examples: Europe/Moscow, America/New_York, Asia/Tokyo, UTC"
     read -p "Enter timezone (press Enter to keep current): " NEW_TIMEZONE
-    
+
     if [ -n "$NEW_TIMEZONE" ]; then
-        if timedatectl list-timezones | grep -q "^${NEW_TIMEZONE}$"; then
-            timedatectl set-timezone "$NEW_TIMEZONE"
-            log "Timezone set to: $NEW_TIMEZONE"
+        # Validate timezone
+        if [ -f "/usr/share/zoneinfo/$NEW_TIMEZONE" ]; then
+            if has_systemd && command -v timedatectl >/dev/null 2>&1; then
+                # Use timedatectl if systemd is available
+                timedatectl set-timezone "$NEW_TIMEZONE" 2>/dev/null && log "Timezone set to: $NEW_TIMEZONE" || {
+                    # Fallback to manual method
+                    ln -sf "/usr/share/zoneinfo/$NEW_TIMEZONE" /etc/localtime
+                    echo "$NEW_TIMEZONE" > /etc/timezone
+                    log "Timezone set to: $NEW_TIMEZONE (manual method)"
+                }
+            else
+                # Manual timezone configuration for non-systemd environments
+                ln -sf "/usr/share/zoneinfo/$NEW_TIMEZONE" /etc/localtime
+                echo "$NEW_TIMEZONE" > /etc/timezone
+                log "Timezone set to: $NEW_TIMEZONE"
+            fi
         else
-            warn "Invalid timezone. Keeping current timezone."
+            warn "Invalid timezone '$NEW_TIMEZONE'. Timezone file not found."
+            warn "Keeping current timezone."
         fi
+    else
+        log "Keeping current timezone: $CURRENT_TZ"
     fi
-    
-    # Enable NTP
-    timedatectl set-ntp true
-    log "NTP synchronization enabled"
+
+    # Enable NTP if systemd is available
+    if has_systemd && command -v timedatectl >/dev/null 2>&1; then
+        timedatectl set-ntp true 2>/dev/null && log "NTP synchronization enabled" || warn "Could not enable NTP"
+    else
+        info "NTP configuration requires systemd - skipping (WSL2 syncs time with Windows host)"
+    fi
 else
     log "Skipping timezone configuration"
 fi

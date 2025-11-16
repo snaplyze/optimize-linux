@@ -209,12 +209,46 @@ echo ""
 info "Setting up system locale, hostname, and timezone..."
 echo ""
 
+# Check if dialog is available, fallback to read if not
+check_dialog() {
+    if command -v dialog >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Check if dialog is available, fallback to read if not
+check_dialog() {
+    if command -v dialog >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Check if dialog is available, fallback to read if not
+check_dialog() {
+    if command -v dialog >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Locale selection
-echo "Select system locale:"
-echo "1) en_US.UTF-8 (English)"
-echo "2) ru_RU.UTF-8 (Russian)"
-echo "3) Both (en_US.UTF-8 + ru_RU.UTF-8)"
-read -p "Enter choice [1-3]: " LOCALE_CHOICE
+    echo "Select system locale:"
+    echo "1) en_US.UTF-8 (English)"
+    echo "2) ru_RU.UTF-8 (Russian)"
+    echo "3) Both (en_US.UTF-8 + ru_RU.UTF-8)"
+    
+    if check_dialog; then
+        LOCALE_CHOICE=$(dialog --title "Locale Selection" --menu "Select locale:" --radiolist "1" "English (en_US.UTF-8)" "2" "Russian (ru_RU.UTF-8)" "3" "Both (en_US.UTF-8 + ru_RU.UTF-8)" --default "1")
+    else
+        read -p "Enter choice [1-3]: " LOCALE_CHOICE
+    fi
+    fi
+    fi
 
 case $LOCALE_CHOICE in
     1)
@@ -240,7 +274,11 @@ case $LOCALE_CHOICE in
 esac
 
 # Install locales package with availability check
-safe_install locales
+if package_available locales; then
+    safe_install locales
+else
+    warn "locales package not available"
+fi
 
 # Generate locales
 log "Generating locales..."
@@ -258,13 +296,17 @@ for locale in $LOCALE_TO_GENERATE; do
     log "Uncommented ${locale} in /etc/locale.gen"
 done
 
-# Generate locales
-locale-gen
+# Generate locales without LC_ALL set
+LC_ALL=C.UTF-8 locale-gen
 
-# Set default locale
-update-locale LANG=$DEFAULT_LOCALE LC_ALL=$DEFAULT_LOCALE LANGUAGE=${DEFAULT_LOCALE%%.*}
+# Update locale configuration file
+cat > /etc/default/locale <<EOF
+LANG=$DEFAULT_LOCALE
+LANGUAGE=${DEFAULT_LOCALE%%.*}
+LC_ALL=$DEFAULT_LOCALE
+EOF
 
-# Also export for current session
+# Export for current session
 export LANG=$DEFAULT_LOCALE
 export LC_ALL=$DEFAULT_LOCALE
 export LANGUAGE=${DEFAULT_LOCALE%%.*}
@@ -278,8 +320,11 @@ EOF
 
 chmod +x /etc/profile.d/locale.sh
 
+# Source the new locale settings
+. /etc/profile.d/locale.sh 2>/dev/null || true
+
 log "Default locale set to: $DEFAULT_LOCALE"
-log "Locale will be active after reboot or re-login"
+log "Locale will be fully applied after reboot or re-login"
 
 # Hostname configuration
 echo ""
@@ -311,33 +356,65 @@ fi
 
 # Timezone configuration
 echo ""
-info "Current timezone: $(timedatectl show --property=Timezone --value)"
+# Get current timezone
+if command -v timedatectl >/dev/null 2>&1; then
+    CURRENT_TZ=$(timedatectl show --property=Timezone --value 2>/dev/null)
+elif [ -L /etc/localtime ]; then
+    CURRENT_TZ=$(readlink /etc/localtime | sed 's|/usr/share/zoneinfo/||')
+else
+    CURRENT_TZ="Unknown"
+fi
+
+info "Current timezone: $CURRENT_TZ"
 info "Examples: Europe/Moscow, America/New_York, Asia/Tokyo, UTC"
 echo ""
 read -p "Enter timezone (press Enter to keep current): " NEW_TIMEZONE
 
 if [ -n "$NEW_TIMEZONE" ]; then
     # Validate timezone
-    if timedatectl list-timezones | grep -q "^${NEW_TIMEZONE}$"; then
-        timedatectl set-timezone "$NEW_TIMEZONE"
-        log "Timezone set to: $NEW_TIMEZONE"
+    if [ -f "/usr/share/zoneinfo/$NEW_TIMEZONE" ]; then
+        if command -v timedatectl >/dev/null 2>&1; then
+            # Use timedatectl if available
+            timedatectl set-timezone "$NEW_TIMEZONE" 2>/dev/null && log "Timezone set to: $NEW_TIMEZONE" || {
+                # Fallback to manual method
+                ln -sf "/usr/share/zoneinfo/$NEW_TIMEZONE" /etc/localtime
+                echo "$NEW_TIMEZONE" > /etc/timezone
+                log "Timezone set to: $NEW_TIMEZONE (manual method)"
+            }
+        else
+            # Manual timezone configuration
+            ln -sf "/usr/share/zoneinfo/$NEW_TIMEZONE" /etc/localtime
+            echo "$NEW_TIMEZONE" > /etc/timezone
+            log "Timezone set to: $NEW_TIMEZONE"
+        fi
     else
-        warn "Invalid timezone. Keeping current timezone."
-        warn "Use 'timedatectl list-timezones' to see available timezones."
+        warn "Invalid timezone '$NEW_TIMEZONE'. Timezone file not found."
+        warn "Keeping current timezone."
     fi
 else
-    log "Keeping current timezone: $(timedatectl show --property=Timezone --value)"
+    log "Keeping current timezone: $CURRENT_TZ"
 fi
 
-# Enable NTP
-timedatectl set-ntp true
-log "NTP synchronization enabled"
+# Enable NTP if timedatectl is available
+if command -v timedatectl >/dev/null 2>&1; then
+    timedatectl set-ntp true 2>/dev/null && log "NTP synchronization enabled" || warn "Could not enable NTP"
+else
+    info "NTP configuration requires systemd - install ntp package manually if needed"
+fi
 
 echo ""
 info "Localization configured:"
 info "  Locale: $DEFAULT_LOCALE"
 info "  Hostname: $(hostname)"
-info "  Timezone: $(timedatectl show --property=Timezone --value)"
+# Get timezone again for display
+if command -v timedatectl >/dev/null 2>&1; then
+    DISPLAY_TZ=$(timedatectl show --property=Timezone --value 2>/dev/null)
+elif [ -L /etc/localtime ]; then
+    DISPLAY_TZ=$(readlink /etc/localtime | sed 's|/usr/share/zoneinfo/||')
+else
+    DISPLAY_TZ="Unknown"
+fi
+info "  Timezone: $DISPLAY_TZ"
 echo ""
 
 ################################################################################
@@ -791,6 +868,7 @@ essential_packages=(
     "gnupg"
     "ca-certificates"
     "lsb-release"
+    "fastfetch"
 )
 
 safe_install "${essential_packages[@]}"
@@ -1416,7 +1494,15 @@ log "Summary of optimizations:"
 log "  ✓ OS detected: $OS_NAME $OS_VERSION ($OS_CODENAME)"
 log "  ✓ Locale: $DEFAULT_LOCALE (will apply after reboot)"
 log "  ✓ Hostname: $(hostname)"
-log "  ✓ Timezone: $(timedatectl show --property=Timezone --value)"
+# Get timezone for display with fallback
+if command -v timedatectl >/dev/null 2>&1; then
+    SUMMARY_TZ=$(timedatectl show --property=Timezone --value 2>/dev/null)
+elif [ -L /etc/localtime ]; then
+    SUMMARY_TZ=$(readlink /etc/localtime | sed 's|/usr/share/zoneinfo/||')
+else
+    SUMMARY_TZ="Unknown"
+fi
+log "  ✓ Timezone: $SUMMARY_TZ"
 log "  ✓ Zsh + Starship installed for root and $NEW_USER"
 log "  ✓ Starship with Unicode icons"
 log "  ✓ Autosuggestions plugin"
