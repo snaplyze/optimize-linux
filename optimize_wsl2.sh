@@ -1137,25 +1137,48 @@ if $INSTALL_NVIDIA; then
     # Install CUDA Toolkit if requested
     if $INSTALL_CUDA; then
         log "Installing CUDA Toolkit..."
-        
+
         # Add CUDA repository
         CUDA_REPO_PATH="debian13/x86_64"
         if ! curl -fsI "https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/" >/dev/null 2>&1; then
-            warn "CUDA repo for debian13 unavailable, using debian12"
+            log "CUDA repo for debian13 unavailable, using debian12"
             CUDA_REPO_PATH="debian12/x86_64"
         fi
-        
+
         CUDA_KEY_URL="https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/3bf863cc.pub"
-        curl -fsSL "$CUDA_KEY_URL" | gpg --dearmor -o /usr/share/keyrings/cuda-archive-keyring.gpg
-        echo "deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/ /" | \
-            tee /etc/apt/sources.list.d/cuda-${CUDA_REPO_PATH//\//-}.list
-        
-        # Install CUDA toolkit with availability check
-        if package_available cuda-toolkit; then
-            safe_install cuda-toolkit
-            log "CUDA Toolkit installed"
+        if curl -fsSL "$CUDA_KEY_URL" | gpg --dearmor -o /usr/share/keyrings/cuda-archive-keyring.gpg 2>/dev/null; then
+            log "CUDA GPG key imported"
         else
-            warn "cuda-toolkit package not available"
+            warn "Failed to import CUDA GPG key, continuing anyway..."
+        fi
+
+        echo "deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/ /" | \
+            tee /etc/apt/sources.list.d/cuda-${CUDA_REPO_PATH//\//-}.list > /dev/null
+
+        log "Updating package list for CUDA repository..."
+        apt-get update >/dev/null 2>&1 || warn "Failed to update package list"
+
+        # Install CUDA packages
+        # Try to install cuda-toolkit metapackage first, fall back to individual components
+        if apt-cache search cuda | grep -q "^cuda-toolkit"; then
+            log "Found cuda-toolkit metapackage, installing..."
+            safe_install cuda-toolkit 2>/dev/null || {
+                log "cuda-toolkit metapackage not available, trying cuda package..."
+                if apt-cache search "^cuda " | grep -q "^cuda "; then
+                    safe_install cuda
+                    log "CUDA Toolkit installed (cuda metapackage)"
+                else
+                    warn "No CUDA toolkit packages found - CUDA repository may not be properly configured"
+                fi
+            }
+        elif apt-cache search "^cuda " | grep -q "^cuda "; then
+            log "Installing cuda metapackage..."
+            safe_install cuda
+            log "CUDA Toolkit installed (cuda metapackage)"
+        else
+            warn "No CUDA packages available in repository"
+            log "Repository: https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/"
+            log "Try running: apt-cache search cuda"
         fi
     fi
     
