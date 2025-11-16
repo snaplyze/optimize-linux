@@ -181,7 +181,7 @@ PERFORMANCE_TUNING=true
 
 # Interactive menu
 show_menu() {
-    clear
+    echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
     echo -e "${CYAN}  WSL2 OPTIMIZATION: Debian ${VERSION_ID:-?} (${VERSION_CODENAME^:-?})${NC}"
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
