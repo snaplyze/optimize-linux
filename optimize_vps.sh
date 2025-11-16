@@ -847,12 +847,25 @@ log "Downloading Go from: $GO_DOWNLOAD_URL"
 
 # Download Go binary
 cd /tmp
-curl -fsSL "$GO_CHECKSUM_URL" -o go_checksum.sha256
+
+# Download checksum (Google provides just the hash, sometimes with filename)
+CHECKSUM=$(curl -fsSL "$GO_CHECKSUM_URL" 2>/dev/null | head -1 | awk '{print $1}')
+if [ -z "$CHECKSUM" ]; then
+    error "Could not download Go checksum from $GO_CHECKSUM_URL"
+    exit 1
+fi
+
+log "Expected checksum: $CHECKSUM"
+
+# Download Go binary
 curl -fsSL "$GO_DOWNLOAD_URL" -o "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
 
 # Verify checksum
-if ! sha256sum -c go_checksum.sha256 >/dev/null 2>&1; then
+ACTUAL_CHECKSUM=$(sha256sum "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" | awk '{print $1}')
+if [ "$CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
     error "Go checksum verification failed!"
+    error "Expected: $CHECKSUM"
+    error "Actual:   $ACTUAL_CHECKSUM"
     exit 1
 fi
 log "Go checksum verified successfully"
@@ -908,7 +921,7 @@ log "Go ${GO_VERSION} installed successfully"
 log "Go path: /usr/local/go/bin/go"
 
 # Cleanup
-rm -f /tmp/go_checksum.sha256 /tmp/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz
+rm -f /tmp/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz
 
 ################################################################################
 # 6. Node.js and NVM Installation
