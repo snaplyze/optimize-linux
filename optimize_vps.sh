@@ -823,9 +823,155 @@ info "  • Ctrl+→ to accept one word"
 echo ""
 
 ################################################################################
-# 5. Detect CPU Architecture and RAM
+# 5. Go Installation
 ################################################################################
-log "Step 5: Detecting system specifications..."
+section "Step 5: Go Installation"
+
+log "Installing Go programming language..."
+
+# Detect architecture
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64) GO_ARCH="amd64" ;;
+    aarch64) GO_ARCH="arm64" ;;
+    *) GO_ARCH="$ARCH"; warn "Unknown architecture, attempting with: $ARCH" ;;
+esac
+
+# Fetch latest Go version
+GO_VERSION=$(curl -s https://go.dev/VERSION 2>/dev/null | grep -oP '(?<=^go)[0-9.]+' | head -1)
+if [ -z "$GO_VERSION" ]; then
+    GO_VERSION="1.23.0"  # fallback version
+    warn "Could not detect latest Go version, using fallback: $GO_VERSION"
+fi
+
+GO_DOWNLOAD_URL="https://dl.google.com/go/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+GO_CHECKSUM_URL="https://dl.google.com/go/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz.sha256"
+
+log "Go version: $GO_VERSION ($GO_ARCH)"
+log "Downloading Go from: $GO_DOWNLOAD_URL"
+
+# Download Go binary
+cd /tmp
+curl -fsSL "$GO_CHECKSUM_URL" -o go_checksum.sha256
+curl -fsSL "$GO_DOWNLOAD_URL" -o "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+
+# Verify checksum
+if ! sha256sum -c go_checksum.sha256 >/dev/null 2>&1; then
+    error "Go checksum verification failed!"
+    exit 1
+fi
+log "Go checksum verified successfully"
+
+# Remove old Go installation if exists
+rm -rf /usr/local/go
+mkdir -p /usr/local/go
+
+# Extract and install
+tar -xzf "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -C /usr/local/
+
+# Create profile.d entry for Go PATH
+cat > /etc/profile.d/golang.sh <<'GOEOF'
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/go
+export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+GOEOF
+
+chmod +x /etc/profile.d/golang.sh
+
+# Add Go to .zshrc for root
+if [ -f /root/.zshrc ]; then
+    if ! grep -q "GOROOT" /root/.zshrc; then
+        cat >> /root/.zshrc <<'GORC'
+
+# Go configuration
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/go
+export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+GORC
+    fi
+fi
+
+# Add Go to .zshrc for new user
+USER_HOME=$(eval echo ~$NEW_USER)
+if [ -f "$USER_HOME/.zshrc" ]; then
+    if ! grep -q "GOROOT" "$USER_HOME/.zshrc"; then
+        cat >> "$USER_HOME/.zshrc" <<'GORC'
+
+# Go configuration
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/go
+export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+GORC
+        chown $NEW_USER:$NEW_USER "$USER_HOME/.zshrc"
+    fi
+fi
+
+# Source the profile for current session
+. /etc/profile.d/golang.sh
+
+log "Go ${GO_VERSION} installed successfully"
+log "Go path: /usr/local/go/bin/go"
+
+# Cleanup
+rm -f /tmp/go_checksum.sha256 /tmp/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz
+
+################################################################################
+# 6. Node.js and NVM Installation
+################################################################################
+section "Step 6: Node.js Installation (NVM)"
+
+log "Installing Node.js via NVM (Node Version Manager)..."
+
+# Function to install NVM for a user
+install_nvm_for_user() {
+    local username=$1
+    local user_home=$(eval echo ~$username)
+
+    log "Installing NVM for user: $username"
+
+    # Download and install NVM
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+    # Source NVM in current session
+    export NVM_DIR="$user_home/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+    # Install Node.js LTS
+    nvm install --lts
+    nvm use --lts
+    nvm alias default 'lts/*'
+
+    log "Node.js LTS installed for $username"
+    node --version
+    npm --version
+
+    # Add NVM initialization to .zshrc if present
+    if [ -f "$user_home/.zshrc" ]; then
+        if ! grep -q "NVM_DIR" "$user_home/.zshrc"; then
+            cat >> "$user_home/.zshrc" <<'NVMRC'
+
+# NVM (Node Version Manager) initialization
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+NVMRC
+            chown $username:$username "$user_home/.zshrc" 2>/dev/null || true
+        fi
+    fi
+}
+
+# Install NVM for root
+install_nvm_for_user root
+
+# Install NVM for new user
+install_nvm_for_user $NEW_USER
+
+log "Node.js and NVM installation complete"
+
+################################################################################
+# 7. Detect CPU Architecture and RAM
+################################################################################
+log "Step 7: Detecting system specifications..."
 
 # Install bc with availability check (needed for calculations)
 safe_install bc
@@ -918,9 +1064,9 @@ log "Creating package aliases..."
 log "Package aliases created"
 
 ################################################################################
-# 7. XanMod Kernel Installation
+# 8. XanMod Kernel Installation
 ################################################################################
-log "Step 7: Checking XanMod kernel compatibility..."
+log "Step 8: Checking XanMod kernel compatibility..."
 
 # XanMod supports x86_64 (amd64) architecture
 if [[ "$CPU_ARCH" == "x86_64" ]]; then
@@ -1040,6 +1186,22 @@ docker_packages=(
 
 safe_install "${docker_packages[@]}"
 
+# Configure Docker daemon for better performance BEFORE starting service
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json <<EOF
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  },
+  "storage-driver": "overlay2",
+  "features": {
+    "buildkit": true
+  }
+}
+EOF
+
 # Create systemd drop-in directory for Docker service customization
 mkdir -p /etc/systemd/system/docker.service.d
 
@@ -1050,8 +1212,23 @@ ExecStart=
 ExecStart=/usr/bin/dockerd -H unix:///var/run/docker.sock
 SYSTEMD_EOF
 
-# Enable and start Docker service
+# Enable and start Docker service with stale process cleanup
 systemctl daemon-reload
+
+# Clean up any stale Docker processes and PID file before starting
+if [ -f /var/run/docker.pid ]; then
+    old_pid=$(cat /var/run/docker.pid 2>/dev/null || echo "")
+    if [ -n "$old_pid" ]; then
+        kill -9 "$old_pid" 2>/dev/null || true
+        sleep 1
+    fi
+    rm -f /var/run/docker.pid
+fi
+
+# Also try to kill any lingering dockerd processes
+pkill -9 dockerd 2>/dev/null || true
+sleep 1
+
 systemctl enable docker
 systemctl enable docker.socket
 systemctl start docker.socket
@@ -1077,24 +1254,6 @@ DOCKER_VERSION=$(docker --version)
 COMPOSE_VERSION=$(docker compose version)
 log "Docker installed: $DOCKER_VERSION"
 log "Docker Compose installed: $COMPOSE_VERSION"
-
-# Configure Docker daemon for better performance
-cat > /etc/docker/daemon.json <<EOF
-{
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "10m",
-    "max-file": "3"
-  },
-  "storage-driver": "overlay2",
-  "features": {
-    "buildkit": true
-  }
-}
-EOF
-
-# Restart Docker to apply configuration
-systemctl restart docker
 
 log "Docker and Docker Compose installation complete"
 
@@ -1166,7 +1325,7 @@ sysctl -p /etc/sysctl.d/99-vps-optimization.conf
 ################################################################################
 # 10. Swap Optimization
 ################################################################################
-log "Step 10: Setting up swap file..."
+log "Step 24: Setting up swap file..."
 
 # Remove existing swap if present
 if swapon --show | grep -q "/swapfile"; then
@@ -1245,9 +1404,9 @@ EOF
 systemctl restart fail2ban
 
 ################################################################################
-# 13. System Limits Optimization
+# 25. System Limits Optimization
 ################################################################################
-log "Step 13: Optimizing system limits..."
+log "Step 25: Optimizing system limits..."
 
 cat > /etc/security/limits.d/99-vps-limits.conf <<EOF
 # VPS Limits Optimization
@@ -1302,9 +1461,9 @@ EOF
 systemctl restart systemd-journald
 
 ################################################################################
-# 16. SSH Hardening
+# 24. SSH Hardening
 ################################################################################
-log "Step 16: Hardening SSH configuration..."
+log "Step 24: Hardening SSH configuration..."
 
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup.$(date +%F) 2>/dev/null || true
 
@@ -1342,9 +1501,9 @@ else
 fi
 
 ################################################################################
-# 17. Optimize tmpfs
+# 25. Optimize tmpfs
 ################################################################################
-log "Step 17: Optimizing tmpfs..."
+log "Step 25: Optimizing tmpfs..."
 
 # Check if entries already exist to avoid duplicates
 if ! grep -q "tmpfs /tmp" /etc/fstab; then
@@ -1355,9 +1514,9 @@ EOF
 fi
 
 ################################################################################
-# 18. Disable Unnecessary Services
+# 24. Disable Unnecessary Services
 ################################################################################
-log "Step 18: Disabling unnecessary services..."
+log "Step 24: Disabling unnecessary services..."
 
 SERVICES_TO_DISABLE=(
     "bluetooth.service"
@@ -1374,9 +1533,9 @@ for service in "${SERVICES_TO_DISABLE[@]}"; do
 done
 
 ################################################################################
-# 19. I/O Scheduler Optimization
+# 25. I/O Scheduler Optimization
 ################################################################################
-log "Step 19: Optimizing I/O scheduler..."
+log "Step 25: Optimizing I/O scheduler..."
 
 cat > /etc/udev/rules.d/60-ioschedulers.conf <<EOF
 # Set deadline scheduler for SSDs and none for NVMe
@@ -1385,9 +1544,9 @@ ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/rotational}=="0", AT
 EOF
 
 ################################################################################
-# 20. Create Monitoring Script
+# 24. Create Monitoring Script
 ################################################################################
-log "Step 20: Creating monitoring script..."
+log "Step 24: Creating monitoring script..."
 
 cat > /usr/local/bin/vps-monitor.sh <<'SCRIPT'
 #!/bin/bash
@@ -1470,9 +1629,9 @@ EOF
 chmod +x /etc/cron.weekly/vps-cleanup
 
 ################################################################################
-# 22. Network Performance Test Script
+# 24. Network Performance Test Script
 ################################################################################
-log "Step 22: Creating network performance test script..."
+log "Step 24: Creating network performance test script..."
 
 cat > /usr/local/bin/network-test.sh <<'SCRIPT'
 #!/bin/bash
