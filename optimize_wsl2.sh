@@ -338,7 +338,7 @@ if $INSTALL_BASE_UTILS; then
     log "Installing base utilities..."
     
     # Define packages array for easier management
-    local base_packages=(
+    base_packages=(
         "curl"
         "wget"
         "git"
@@ -983,7 +983,7 @@ if $INSTALL_DOCKER; then
       $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     
     # Install Docker Engine with availability check
-    local docker_packages=(
+    docker_packages=(
         "docker-ce"
         "docker-ce-cli"
         "containerd.io"

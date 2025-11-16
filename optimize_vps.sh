@@ -762,7 +762,7 @@ apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 
 # Install essential packages with availability check
-local essential_packages=(
+essential_packages=(
     "wget"
     "htop"
     "iotop"
@@ -892,7 +892,7 @@ echo \
   $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 # Install Docker Engine, CLI, containerd, and Docker Compose plugin with availability check
-local docker_packages=(
+docker_packages=(
     "docker-ce"
     "docker-ce-cli"
     "containerd.io"
