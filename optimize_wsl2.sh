@@ -1362,8 +1362,9 @@ df -h | grep -v tmpfs
 
 echo ""
 echo "=== WSL2 Specific ==="
-# Get WSL version - handle null bytes and binary output
-WSL_VERSION=$(wsl.exe --version 2>/dev/null | tr -d '\0' | sed 's/[^[:print:]\n]//g' | head -1)
+# Get WSL version - extract version number from wsl.exe output
+# wsl.exe --version outputs multiple lines with strange characters, extract just the version
+WSL_VERSION=$(wsl.exe --version 2>/dev/null | grep -o "WSL: [0-9.]*" | cut -d: -f2 | xargs)
 if [ -z "$WSL_VERSION" ]; then
     echo "WSL Version: Unknown (wsl.exe not available or Windows integration disabled)"
 else
