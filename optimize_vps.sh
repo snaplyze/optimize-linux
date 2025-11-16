@@ -1049,6 +1049,8 @@ essential_packages=(
     "iotop"
     "sysstat"
     "net-tools"
+    "iptables"
+    "iptables-persistent"
     "ufw"
     "fail2ban"
     "unattended-upgrades"
@@ -1079,6 +1081,12 @@ essential_packages=(
 )
 
 safe_install "${essential_packages[@]}"
+
+# Configure iptables-persistent to not ask interactively
+echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
+echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
+
+log "Essential packages and firewall utilities installed"
 
 # Create Debian package aliases (Debian uses different names for some packages)
 log "Creating package aliases..."
