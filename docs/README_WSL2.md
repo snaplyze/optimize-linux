@@ -333,9 +333,8 @@ command="service docker start"
 
 [automount]
 enabled=true
-options="metadata,uid=1000,gid=1000,umask=022,fmask=111"
 root=/
-case=dir
+options="metadata,case=dir,uid=1000,gid=1000,umask=022,fmask=111"
 
 [network]
 generateHosts=true
@@ -350,7 +349,7 @@ default=snaplyze
 ```
 
 **Примечания:**
-- `case=dir` включает directory-level case sensitivity (опции: off, dir, force)
+- `case=dir` в `options` включает directory-level case sensitivity (опции: off, dir, force)
 - `default=snaplyze` устанавливает пользователя по умолчанию (требует `wsl --shutdown`)
 - `command="service docker start"` запускает Docker при включении WSL2
 

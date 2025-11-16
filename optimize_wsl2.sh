@@ -272,11 +272,10 @@ command="service docker start"
 [automount]
 # Enable metadata for proper file permissions
 enabled=true
-options="metadata,uid=1000,gid=1000,umask=022,fmask=111"
 # Mount drives to / instead of /mnt for cleaner paths
 root=/
-# Enable case sensitivity (off, dir, or force)
-case=dir
+# Combined options: metadata for permissions, case sensitivity set to 'dir', and ownership settings
+options="metadata,case=dir,uid=1000,gid=1000,umask=022,fmask=111"
 
 [network]
 # Generate hosts file for local development
