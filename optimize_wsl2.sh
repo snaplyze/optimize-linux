@@ -1588,11 +1588,17 @@ df -h | grep -v tmpfs
 
 echo ""
 echo "=== WSL2 Specific ==="
-# Get WSL version - extract version number from wsl.exe output
-# wsl.exe --version outputs multiple lines with strange characters, extract just the version
+# Try to get WSL version from wsl.exe (available from Windows side)
 WSL_VERSION=$(wsl.exe --version 2>/dev/null | grep -o "WSL: [0-9.]*" | cut -d: -f2 | xargs)
+
+# If wsl.exe not available, try to get WSL kernel version from /proc/version
 if [ -z "$WSL_VERSION" ]; then
-    echo "WSL Version: Unknown (wsl.exe not available or Windows integration disabled)"
+    KERNEL_VERSION=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+' /proc/version 2>/dev/null | head -1)
+    if [ -n "$KERNEL_VERSION" ]; then
+        echo "WSL Version: $KERNEL_VERSION (kernel)"
+    else
+        echo "WSL Version: Unknown (run from Windows PowerShell: wsl --version)"
+    fi
 else
     echo "WSL Version: $WSL_VERSION"
 fi
