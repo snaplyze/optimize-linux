@@ -988,8 +988,8 @@ install_go() {
     go_version=$(curl -s https://go.dev/VERSION?m=text | head -1 | sed 's/go//')
 
     if [ -z "$go_version" ]; then
-        warn "Could not determine latest Go version, skipping Go installation"
-        return 1
+        go_version="1.25.4"  # fallback version
+        warn "Could not determine latest Go version, using fallback: $go_version"
     fi
 
     log "Latest Go version: $go_version"
