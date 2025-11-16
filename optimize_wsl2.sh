@@ -265,9 +265,8 @@ if $CONFIGURE_WSL_CONF; then
     cat > /etc/wsl.conf <<'EOF'
 [boot]
 # Enable systemd for better service management
+# systemd allows Docker to auto-start via service configuration
 systemd=true
-# Command to run on startup
-command="service docker start"
 
 [automount]
 # Enable metadata for proper file permissions
@@ -1193,12 +1192,19 @@ section "Step 11: Docker Installation"
 
 if $INSTALL_DOCKER; then
     log "Installing Docker CE..."
-    
+
     # Remove old Docker versions
     for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
         apt-get remove -y $pkg 2>/dev/null || true
     done
-    
+
+    # Switch to iptables-legacy on Debian 13 (nftables is incompatible with Docker)
+    log "Configuring iptables-legacy for Docker compatibility..."
+    safe_install iptables
+    update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 100 >/dev/null 2>&1 || warn "Could not set iptables-legacy"
+    update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 100 >/dev/null 2>&1 || warn "Could not set ip6tables-legacy"
+    log "iptables switched to legacy mode"
+
     # Install prerequisites
     install -m 0755 -d /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/$ID/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
@@ -1238,6 +1244,16 @@ if $INSTALL_DOCKER; then
 }
 EOF
     
+    # Create systemd drop-in directory for Docker service customization
+    mkdir -p /etc/systemd/system/docker.service.d
+
+    # Create systemd service override to fix socket activation issues
+    cat > /etc/systemd/system/docker.service.d/override.conf <<'SYSTEMD_EOF'
+[Service]
+ExecStart=
+ExecStart=/usr/bin/dockerd -H unix:///var/run/docker.sock
+SYSTEMD_EOF
+
     # Enable and start Docker service
     if has_systemd; then
         # Clean up any stale Docker processes and PID file
@@ -1256,12 +1272,25 @@ EOF
 
         systemctl daemon-reload
         systemctl enable docker
+        systemctl enable docker.socket
+        systemctl start docker.socket
         systemctl start docker
         log "Docker service enabled and started"
+
+        # Ensure docker group exists
+        groupadd -f docker
+
+        # Fix docker.sock permissions
+        sleep 1
+        if [ -S /var/run/docker.sock ]; then
+            chown root:docker /var/run/docker.sock
+            chmod 660 /var/run/docker.sock
+            log "Docker socket permissions fixed"
+        fi
     else
         warn "systemd not available - Docker will need to be started manually"
     fi
-    
+
     # Add user to docker group
     if [ -n "$DOCKER_USER" ]; then
         usermod -aG docker "$DOCKER_USER"
@@ -1339,14 +1368,21 @@ if $INSTALL_NVIDIA; then
                 sleep 2
             fi
 
-            # Ensure Docker daemon is valid (or create default)
-            if [ ! -f /etc/docker/daemon.json ] || ! python3 -m json.tool /etc/docker/daemon.json >/dev/null 2>&1; then
-                log "Creating Docker daemon.json..."
+            # Ensure Docker daemon.json is valid JSON (nvidia-ctk needs valid JSON to modify)
+            if [ ! -f /etc/docker/daemon.json ]; then
+                log "Creating empty Docker daemon.json..."
                 echo '{}' > /etc/docker/daemon.json
             fi
 
-            # Configure NVIDIA runtime
-            nvidia-ctk runtime configure --runtime=docker 2>&1 | grep -v "^INFO" || {
+            # Validate daemon.json before modifying
+            if ! grep -q '{' /etc/docker/daemon.json 2>/dev/null; then
+                log "Repairing invalid daemon.json..."
+                echo '{}' > /etc/docker/daemon.json
+            fi
+
+            # Configure NVIDIA runtime using nvidia-ctk (idempotent, safe to run multiple times)
+            log "Configuring NVIDIA Container Runtime..."
+            nvidia-ctk runtime configure --runtime=docker 2>&1 | tee -a "$LOG_FILE" | grep -v "^INFO" || {
                 warn "nvidia-ctk configuration completed with status: $?"
             }
 

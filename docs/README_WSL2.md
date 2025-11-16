@@ -329,7 +329,6 @@ wsl2-backup.sh [username]
 ```ini
 [boot]
 systemd=true
-command="service docker start"
 
 [automount]
 enabled=true
@@ -349,9 +348,10 @@ default=snaplyze
 ```
 
 **Примечания:**
-- `case=dir` в `options` включает directory-level case sensitivity (опции: off, dir, force)
-- `default=snaplyze` устанавливает пользователя по умолчанию (требует `wsl --shutdown`)
-- `command="service docker start"` запускает Docker при включении WSL2
+- `systemd=true` - включает systemd, Docker автоматически стартует через systemd сервис
+- `case=dir` в `options` - включает directory-level case sensitivity (опции: off, dir, force)
+- `default=snaplyze` - устанавливает пользователя по умолчанию (требует `wsl --shutdown`)
+- Docker автоматически стартует через systemd при загрузке WSL2
 
 ### /etc/docker/daemon.json
 ```json
@@ -364,15 +364,22 @@ default=snaplyze
   "storage-driver": "overlay2",
   "features": {
     "buildkit": true
+  },
+  "runtimes": {
+    "nvidia": {
+      "path": "nvidia-container-runtime",
+      "runtimeArgs": []
+    }
   }
 }
 ```
 
 **Примечания:**
-- Минимальная конфигурация для работы в WSL2
 - `log-driver` - JSON файл логирование с ограничением размера логов
 - `storage-driver` - overlay2 оптимален для WSL2
 - `features.buildkit` - использование современного BuildKit для сборки образов
+- `runtimes.nvidia` - добавляется автоматически при установке NVIDIA Container Toolkit
+- **Важно**: Не используйте `hosts`, `default-address-pools` или `default-ulimits` - они могут вызывать конфликты с systemd socket activation
 
 ## 🔄 Обновление и поддержка
 
