@@ -1239,8 +1239,16 @@ if $INSTALL_DOCKER; then
     }
   ],
   "default-ulimits": {
-    "nofile": 65536,
-    "nproc": 32768
+    "nofile": {
+      "Name": "nofile",
+      "Hard": 65536,
+      "Soft": 65536
+    },
+    "nproc": {
+      "Name": "nproc",
+      "Hard": 32768,
+      "Soft": 32768
+    }
   },
   "features": {
     "buildkit": true
