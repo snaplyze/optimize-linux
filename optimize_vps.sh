@@ -17,6 +17,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Logging
@@ -36,6 +37,14 @@ error() {
 
 info() {
     echo -e "${BLUE}[INFO]${NC} $1" | tee -a "$LOG_FILE"
+}
+
+section() {
+    echo ""
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${CYAN}  $1${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+    echo ""
 }
 
 # Check if package is available in repositories
@@ -70,6 +79,30 @@ safe_install() {
     if [ ${#unavailable_packages[@]} -gt 0 ]; then
         warn "Skipping unavailable packages: ${unavailable_packages[*]}"
     fi
+}
+
+# Yes/No prompt with default value
+prompt_yn() {
+    local prompt="$1"
+    local default="$2"  # "yes" or "no"
+    local response
+
+    if [ "$default" = "yes" ]; then
+        read -p "$prompt [Y/n]: " response
+        response=${response:-y}
+    else
+        read -p "$prompt [y/N]: " response
+        response=${response:-n}
+    fi
+
+    case "$response" in
+        [yY][eE][sS]|[yY]) return 0 ;;
+        [nN][oO]|[nN]) return 1 ;;
+        *)
+            warn "Invalid response. Please answer 'yes' or 'no'."
+            prompt_yn "$prompt" "$default"
+            ;;
+    esac
 }
 
 # Check if running as root
@@ -208,24 +241,6 @@ log "Step 3: Configuring system localization..."
 echo ""
 info "Setting up system locale, hostname, and timezone..."
 echo ""
-
-# Check if dialog is available, fallback to read if not
-check_dialog() {
-    if command -v dialog >/dev/null 2>&1; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Check if dialog is available, fallback to read if not
-check_dialog() {
-    if command -v dialog >/dev/null 2>&1; then
-        return 0
-    else
-        return 1
-    fi
-}
 
 # Check if dialog is available, fallback to read if not
 check_dialog() {
@@ -847,9 +862,20 @@ log "Step 6: Updating system and installing essential packages..."
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 
+# Enrich APT sources with non-free packages
+log "Enriching APT sources with contrib and non-free components..."
+if [ -f /etc/apt/sources.list ]; then
+    # Add contrib and non-free to all deb sources (if not already present)
+    sed -i 's/^deb \(http\|https\)/deb \1/g; s/^deb \([^#]*\)$/deb \1 contrib non-free non-free-firmware/g; s/contrib non-free non-free-firmware.*contrib non-free non-free-firmware/contrib non-free non-free-firmware/g' /etc/apt/sources.list
+fi
+apt-get update
+log "APT sources enriched with contrib and non-free components"
+
 # Install essential packages with availability check
 essential_packages=(
     "wget"
+    "curl"
+    "git"
     "htop"
     "iotop"
     "sysstat"
@@ -862,6 +888,7 @@ essential_packages=(
     "ncdu"
     "tree"
     "vim"
+    "nano"
     "tmux"
     "zip"
     "unzip"
@@ -869,9 +896,26 @@ essential_packages=(
     "ca-certificates"
     "lsb-release"
     "fastfetch"
+    "cmake"
+    "make"
+    "gcc"
+    "g++"
+    "python3-venv"
+    "fzf"
+    "ripgrep"
+    "fd-find"
+    "bat"
+    "xz-utils"
+    "xdg-user-dirs"
 )
 
 safe_install "${essential_packages[@]}"
+
+# Create Debian package aliases (Debian uses different names for some packages)
+log "Creating package aliases..."
+[ -f /usr/bin/batcat ] && [ ! -f /usr/bin/bat ] && ln -sf /usr/bin/batcat /usr/bin/bat 2>/dev/null || true
+[ -f /usr/bin/fdfind ] && [ ! -f /usr/bin/fd ] && ln -sf /usr/bin/fdfind /usr/bin/fd 2>/dev/null || true
+log "Package aliases created"
 
 ################################################################################
 # 7. XanMod Kernel Installation
