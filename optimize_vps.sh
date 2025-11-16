@@ -45,9 +45,9 @@ package_available() {
 
 # Safe package installation with availability check
 safe_install() {
-    local packages=("$@")
-    local available_packages=()
-    local unavailable_packages=()
+    packages=("$@")
+    available_packages=()
+    unavailable_packages=()
     
     # Update package list before checking availability
     apt-get update >/dev/null 2>&1 || warn "Failed to update package list"
