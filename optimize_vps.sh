@@ -38,6 +38,40 @@ info() {
     echo -e "${BLUE}[INFO]${NC} $1" | tee -a "$LOG_FILE"
 }
 
+# Check if package is available in repositories
+package_available() {
+    apt-cache show "$1" >/dev/null 2>&1
+}
+
+# Safe package installation with availability check
+safe_install() {
+    local packages=("$@")
+    local available_packages=()
+    local unavailable_packages=()
+    
+    # Update package list before checking availability
+    apt-get update >/dev/null 2>&1 || warn "Failed to update package list"
+    
+    for pkg in "${packages[@]}"; do
+        if package_available "$pkg"; then
+            available_packages+=("$pkg")
+        else
+            unavailable_packages+=("$pkg")
+        fi
+    done
+    
+    if [ ${#available_packages[@]} -gt 0 ]; then
+        log "Installing available packages: ${available_packages[*]}"
+        apt-get install -y "${available_packages[@]}"
+    else
+        warn "No packages available for installation"
+    fi
+    
+    if [ ${#unavailable_packages[@]} -gt 0 ]; then
+        warn "Skipping unavailable packages: ${unavailable_packages[*]}"
+    fi
+}
+
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
    error "This script must be run as root (use sudo)"
@@ -196,8 +230,8 @@ case $LOCALE_CHOICE in
         ;;
 esac
 
-# Install locales package if not present
-apt-get install -y locales
+# Install locales package with availability check
+safe_install locales
 
 # Generate locales
 log "Generating locales..."
@@ -306,8 +340,8 @@ echo ""
 info "Installing Zsh and Starship for better shell experience..."
 echo ""
 
-# Install Zsh and dependencies (installed here ONCE - NO DUPLICATION)
-apt-get install -y zsh git curl
+# Install Zsh and dependencies with availability check
+safe_install zsh git curl
 
 # Install Starship prompt (universal, works everywhere)
 curl -sS https://starship.rs/install.sh | sh -s -- -y
@@ -692,8 +726,8 @@ echo ""
 ################################################################################
 log "Step 5: Detecting system specifications..."
 
-# Install bc BEFORE using it (needed for calculations)
-apt-get install -y bc
+# Install bc with availability check (needed for calculations)
+safe_install bc
 
 # Detect CPU architecture
 CPU_ARCH=$(uname -m)
@@ -727,27 +761,30 @@ log "Step 6: Updating system and installing essential packages..."
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 
-# Install essential packages (zsh, git, curl already installed in step 1.7 - NO DUPLICATION)
-apt-get install -y \
-    wget \
-    htop \
-    iotop \
-    sysstat \
-    net-tools \
-    ufw \
-    fail2ban \
-    unattended-upgrades \
-    apt-listchanges \
-    needrestart \
-    ncdu \
-    tree \
-    vim \
-    tmux \
-    zip \
-    unzip \
-    gnupg \
-    ca-certificates \
-    lsb-release
+# Install essential packages with availability check
+local essential_packages=(
+    "wget"
+    "htop"
+    "iotop"
+    "sysstat"
+    "net-tools"
+    "ufw"
+    "fail2ban"
+    "unattended-upgrades"
+    "apt-listchanges"
+    "needrestart"
+    "ncdu"
+    "tree"
+    "vim"
+    "tmux"
+    "zip"
+    "unzip"
+    "gnupg"
+    "ca-certificates"
+    "lsb-release"
+)
+
+safe_install "${essential_packages[@]}"
 
 ################################################################################
 # 7. XanMod Kernel Installation
@@ -802,27 +839,25 @@ if [[ "$CPU_ARCH" == "x86_64" ]]; then
 
     echo 'deb [signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] http://deb.xanmod.org releases main' | tee /etc/apt/sources.list.d/xanmod-release.list
 
-    apt-get update
-
-    # Install XanMod kernel based on detected variant
+    # Install XanMod kernel based on detected variant with availability check
     case $XANMOD_VARIANT in
         "x64v4")
-            if apt-cache show linux-xanmod-x64v4 &>/dev/null; then
-                apt-get install -y linux-xanmod-x64v4
+            if package_available linux-xanmod-x64v4; then
+                safe_install linux-xanmod-x64v4
             else
                 warn "x64v4 package not available, falling back to x64v3"
-                apt-get install -y linux-xanmod-x64v3
+                safe_install linux-xanmod-x64v3
                 XANMOD_VARIANT="x64v3"
             fi
             ;;
         "x64v3")
-            apt-get install -y linux-xanmod-x64v3
+            safe_install linux-xanmod-x64v3
             ;;
         "x64v2")
-            apt-get install -y linux-xanmod-x64v2
+            safe_install linux-xanmod-x64v2
             ;;
         *)
-            apt-get install -y linux-xanmod-x64v1
+            safe_install linux-xanmod-x64v1
             ;;
     esac
 
@@ -856,16 +891,16 @@ echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$ID \
   $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-# Update package index
-apt-get update
+# Install Docker Engine, CLI, containerd, and Docker Compose plugin with availability check
+local docker_packages=(
+    "docker-ce"
+    "docker-ce-cli"
+    "containerd.io"
+    "docker-buildx-plugin"
+    "docker-compose-plugin"
+)
 
-# Install Docker Engine, CLI, containerd, and Docker Compose plugin
-apt-get install -y \
-    docker-ce \
-    docker-ce-cli \
-    containerd.io \
-    docker-buildx-plugin \
-    docker-compose-plugin
+safe_install "${docker_packages[@]}"
 
 # Enable and start Docker service
 systemctl enable docker
@@ -1289,7 +1324,7 @@ echo "Testing network speed with speedtest-cli..."
 
 if ! command -v speedtest-cli &> /dev/null; then
     echo "Installing speedtest-cli..."
-    apt-get install -y speedtest-cli
+    safe_install speedtest-cli
 fi
 
 speedtest-cli
