@@ -50,10 +50,10 @@
 ### Быстрый запуск
 ```bash
 # Быстрый запуск (bash + curl)
-bash <(curl -s https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_vps.sh)
+bash <(curl -s https://raw.githubusercontent.com/snaplyze/optimize-linux/refs/heads/main/optimize_vps.sh)
 
 # Или скачайте и запустите
-wget https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_vps.sh
+wget https://raw.githubusercontent.com/snaplyze/optimize-linux/refs/heads/main/optimize_vps.sh
 chmod +x optimize_vps.sh
 sudo ./optimize_vps.sh
 ```
@@ -343,7 +343,7 @@ ClientAliveInterval 300
 ### Ручное обновление
 ```bash
 # Обновить скрипт
-wget -O optimize_vps.sh https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_vps.sh
+wget -O optimize_vps.sh https://raw.githubusercontent.com/snaplyze/optimize-linux/refs/heads/main/optimize_vps.sh
 
 # Проверить систему
 vps-monitor.sh

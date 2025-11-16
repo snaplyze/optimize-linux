@@ -70,10 +70,10 @@ wsl --set-default-version 2
 
 ```bash
 # Быстрый запуск (bash + curl)
-bash <(curl -s https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_wsl2.sh)
+bash <(curl -s https://raw.githubusercontent.com/snaplyze/optimize-linux/refs/heads/main/optimize_wsl2.sh)
 
 # Или скачайте скрипт
-wget https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_wsl2.sh
+wget https://raw.githubusercontent.com/snaplyze/optimize-linux/refs/heads/main/optimize_wsl2.sh
 
 # Сделайте исполняемым
 chmod +x optimize_wsl2.sh
@@ -293,7 +293,7 @@ case=sensitive
 ### Ручное обновление
 ```bash
 # Обновить скрипт
-wget -O optimize_wsl2.sh https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_wsl2.sh
+wget -O optimize_wsl2.sh https://raw.githubusercontent.com/snaplyze/optimize-linux/refs/heads/main/optimize_wsl2.sh
 
 # Проверить систему
 wsl2-monitor.sh
