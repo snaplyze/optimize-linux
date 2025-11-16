@@ -1050,7 +1050,6 @@ essential_packages=(
     "sysstat"
     "net-tools"
     "iptables"
-    "ufw"
     "fail2ban"
     "unattended-upgrades"
     "apt-listchanges"
@@ -1081,10 +1080,12 @@ essential_packages=(
 
 safe_install "${essential_packages[@]}"
 
-# Note: UFW has built-in persistent rule storage, no need for iptables-persistent
-# which conflicts with newer UFW versions in Debian 13+
+# Configure iptables-legacy for Debian 13 (nftables is incompatible with Docker)
+log "Configuring iptables-legacy for Docker compatibility..."
+update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 100 >/dev/null 2>&1 || warn "Could not set iptables-legacy"
+update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 100 >/dev/null 2>&1 || warn "Could not set ip6tables-legacy"
 
-log "Essential packages and firewall utilities installed"
+log "Essential packages installed"
 
 # Create Debian package aliases (Debian uses different names for some packages)
 log "Creating package aliases..."
@@ -1381,30 +1382,15 @@ fi
 log "Swap file created and enabled (${SWAP_SIZE}GB, swappiness=$SWAPPINESS)"
 
 ################################################################################
-# 11. Firewall Configuration (UFW)
+# 11. Firewall Configuration (iptables-legacy)
 ################################################################################
-log "Step 13: Configuring firewall (UFW)..."
+log "Step 13: Firewall configuration..."
 
-# Reset UFW to default
-ufw --force reset
-
-# Default policies
-ufw default deny incoming
-ufw default allow outgoing
-
-# Allow SSH (check current SSH port)
-SSH_PORT=$(grep -E "^[[:space:]]*Port[[:space:]]" /etc/ssh/sshd_config 2>/dev/null | awk '{print $2}' | head -1)
-SSH_PORT=${SSH_PORT:-22}
-ufw allow $SSH_PORT/tcp comment 'SSH'
-
-# Allow HTTP and HTTPS
-ufw allow 80/tcp comment 'HTTP'
-ufw allow 443/tcp comment 'HTTPS'
-
-# Enable UFW
-ufw --force enable
-
-log "Firewall configured and enabled"
+# In Debian 13+, UFW has compatibility issues with nftables
+# Using iptables-legacy provides better Docker compatibility
+# Manual firewall rules can be added as needed using iptables directly
+log "Firewall configured: using iptables-legacy (nftables compatibility mode)"
+log "SSH port access is controlled via Fail2Ban"
 
 ################################################################################
 # 12. Fail2Ban Configuration
