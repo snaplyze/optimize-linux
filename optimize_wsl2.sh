@@ -1357,8 +1357,8 @@ if $INSTALL_NVIDIA; then
                 sleep 2
 
                 # Check Docker status with retries
-                local retry_count=0
-                local max_retries=3
+                retry_count=0
+                max_retries=3
                 while [ $retry_count -lt $max_retries ]; do
                     if systemctl is-active docker >/dev/null 2>&1; then
                         log "NVIDIA Container Toolkit configured successfully"
