@@ -1050,6 +1050,7 @@ essential_packages=(
     "sysstat"
     "net-tools"
     "iptables"
+    "ufw"
     "fail2ban"
     "unattended-upgrades"
     "apt-listchanges"
@@ -1080,10 +1081,12 @@ essential_packages=(
 
 safe_install "${essential_packages[@]}"
 
-# Configure iptables-legacy for Debian 13 (nftables is incompatible with Docker)
-log "Configuring iptables-legacy for Docker compatibility..."
+# Configure iptables-legacy for Debian 13+ (nftables compatibility issue with UFW)
+# Must be done BEFORE installing UFW to ensure proper initialization
+log "Configuring iptables-legacy for UFW and Docker compatibility..."
 update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 100 >/dev/null 2>&1 || warn "Could not set iptables-legacy"
 update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 100 >/dev/null 2>&1 || warn "Could not set ip6tables-legacy"
+log "iptables switched to legacy mode for compatibility"
 
 log "Essential packages installed"
 
@@ -1186,12 +1189,8 @@ for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
     apt-get remove -y $pkg 2>/dev/null || true
 done
 
-# Switch to iptables-legacy (Debian 13 uses nftables, Docker is incompatible)
-log "Configuring iptables-legacy for Docker compatibility..."
-safe_install iptables
-update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 100 >/dev/null 2>&1 || warn "Could not set iptables-legacy"
-update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 100 >/dev/null 2>&1 || warn "Could not set ip6tables-legacy"
-log "iptables switched to legacy mode"
+# Note: iptables-legacy was already configured above for UFW and Docker compatibility
+log "Using iptables-legacy for Docker compatibility (already configured)"
 
 # Install prerequisites (ca-certificates, curl, gnupg, lsb-release already installed)
 install -m 0755 -d /etc/apt/keyrings
@@ -1382,15 +1381,28 @@ fi
 log "Swap file created and enabled (${SWAP_SIZE}GB, swappiness=$SWAPPINESS)"
 
 ################################################################################
-# 11. Firewall Configuration (iptables-legacy)
+# 11. Firewall Configuration (UFW)
 ################################################################################
 log "Step 13: Firewall configuration..."
 
-# In Debian 13+, UFW has compatibility issues with nftables
-# Using iptables-legacy provides better Docker compatibility
-# Manual firewall rules can be added as needed using iptables directly
-log "Firewall configured: using iptables-legacy (nftables compatibility mode)"
-log "SSH port access is controlled via Fail2Ban"
+# Enable UFW firewall (iptables-legacy was already configured above for compatibility)
+log "Enabling UFW firewall..."
+ufw --force enable >/dev/null 2>&1 || warn "Could not enable UFW"
+
+# Configure UFW rules
+# Default policies
+ufw default deny incoming 2>/dev/null
+ufw default allow outgoing 2>/dev/null
+
+# Allow SSH (critical for VPS access)
+ufw allow 22/tcp 2>/dev/null || warn "Could not allow SSH port"
+
+# Allow HTTP and HTTPS if Docker is running web services
+ufw allow 80/tcp 2>/dev/null
+ufw allow 443/tcp 2>/dev/null
+
+log "UFW firewall enabled with SSH access allowed"
+log "Firewall rules: SSH (22/tcp), HTTP (80/tcp), HTTPS (443/tcp) allowed"
 
 ################################################################################
 # 12. Fail2Ban Configuration
