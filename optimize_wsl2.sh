@@ -952,9 +952,182 @@ else
 fi
 
 ################################################################################
-# 8. SSH Agent Configuration
+# 8. Go Installation (Latest Version)
 ################################################################################
-section "Step 8: SSH Agent Configuration"
+section "Step 8: Go Installation"
+
+log "Installing Go (latest stable version)..."
+
+# Install Go using curl and SHA256 verification
+install_go() {
+    local go_version
+    local go_arch
+    local go_os="linux"
+    local go_download_url
+    local go_checksum_url
+    local go_expected_checksum
+    local go_actual_checksum
+    local temp_dir
+
+    # Detect architecture
+    go_arch=$(uname -m)
+    case $go_arch in
+        x86_64)
+            go_arch="amd64"
+            ;;
+        aarch64)
+            go_arch="arm64"
+            ;;
+        *)
+            warn "Unsupported architecture: $go_arch"
+            return 1
+            ;;
+    esac
+
+    log "Detected architecture: $go_arch"
+
+    # Get latest Go version
+    log "Fetching latest Go version..."
+    go_version=$(curl -s https://go.dev/VERSION?m=text | head -1 | sed 's/go//')
+
+    if [ -z "$go_version" ]; then
+        warn "Could not determine latest Go version, skipping Go installation"
+        return 1
+    fi
+
+    log "Latest Go version: $go_version"
+
+    # Build download URL
+    go_download_url="https://go.dev/dl/go${go_version}.${go_os}-${go_arch}.tar.gz"
+    go_checksum_url="https://go.dev/dl/go${go_version}.${go_os}-${go_arch}.tar.gz.sha256"
+
+    # Create temporary directory
+    temp_dir=$(mktemp -d)
+    trap "rm -rf $temp_dir" EXIT
+
+    # Download checksum
+    log "Downloading Go checksum..."
+    if ! curl -fsSL "$go_checksum_url" -o "$temp_dir/checksum.txt"; then
+        warn "Failed to download Go checksum"
+        return 1
+    fi
+
+    go_expected_checksum=$(cut -d' ' -f1 "$temp_dir/checksum.txt")
+    log "Expected checksum: $go_expected_checksum"
+
+    # Download Go
+    log "Downloading Go ${go_version} for ${go_arch}..."
+    if ! curl -fsSL "$go_download_url" -o "$temp_dir/go.tar.gz"; then
+        warn "Failed to download Go"
+        return 1
+    fi
+
+    # Verify checksum
+    log "Verifying Go checksum..."
+    cd "$temp_dir"
+    if ! echo "$go_expected_checksum  go.tar.gz" | sha256sum -c - >/dev/null 2>&1; then
+        warn "Go checksum verification failed"
+        return 1
+    fi
+    cd - >/dev/null
+
+    log "Checksum verified successfully"
+
+    # Remove old Go if exists
+    if [ -d "/usr/local/go" ]; then
+        log "Removing old Go installation..."
+        rm -rf /usr/local/go
+    fi
+
+    # Extract and install Go
+    log "Installing Go to /usr/local/go..."
+    tar -C /usr/local -xzf "$temp_dir/go.tar.gz"
+
+    # Add Go to PATH for all users
+    cat > /etc/profile.d/golang.sh <<'GOEOF'
+export PATH=/usr/local/go/bin:$PATH
+export GOPATH=$HOME/go
+export PATH=$GOPATH/bin:$PATH
+GOEOF
+    chmod +x /etc/profile.d/golang.sh
+
+    # Source it for current session
+    export PATH=/usr/local/go/bin:$PATH
+    export GOPATH=$HOME/go
+    export PATH=$GOPATH/bin:$PATH
+
+    log "Go ${go_version} installed successfully"
+    /usr/local/go/bin/go version
+}
+
+install_go || warn "Go installation failed, continuing..."
+
+################################################################################
+# 9. Node.js Installation with NVM
+################################################################################
+section "Step 9: Node.js Installation (NVM + Latest LTS)"
+
+log "Installing NVM and Node.js LTS..."
+
+# Function to install NVM for a user
+install_nvm_for_user() {
+    local username=$1
+    local user_home=$(eval echo ~$username)
+
+    log "Installing NVM for user: $username"
+
+    # Set environment for NVM installation
+    export HOME=$user_home
+    export NVM_DIR="$user_home/.nvm"
+
+    # Download and install NVM
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash >/dev/null 2>&1
+
+    # Source NVM
+    export NVM_DIR="$user_home/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+    # Install Node.js LTS
+    log "Installing Node.js LTS for $username..."
+    nvm install --lts >/dev/null 2>&1
+    nvm alias default lts/* >/dev/null 2>&1
+
+    log "Node.js installed: $(node --version)"
+    log "npm version: $(npm --version)"
+
+    # Create .zshrc addition for NVM if using Zsh
+    if [ -f "$user_home/.zshrc" ]; then
+        if ! grep -q "nvm/nvm.sh" "$user_home/.zshrc"; then
+            log "Adding NVM to $username .zshrc..."
+            cat >> "$user_home/.zshrc" <<'NVMEOF'
+
+# NVM initialization
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+NVMEOF
+        fi
+    fi
+
+    # Set ownership
+    chown -R "$username:$username" "$NVM_DIR" 2>/dev/null || true
+}
+
+# Install NVM for root
+install_nvm_for_user "root" || warn "NVM installation for root failed"
+
+# Install NVM for regular user if created
+if [ -n "$NEW_USER" ] && $CREATE_USER; then
+    install_nvm_for_user "$NEW_USER" || warn "NVM installation for $NEW_USER failed"
+fi
+
+log "Node.js and NVM installation completed"
+
+################################################################################
+# 10. SSH Agent Configuration
+################################################################################
+section "Step 10: SSH Agent Configuration"
 
 if $CONFIGURE_SSH_AGENT; then
     log "Configuring SSH agent for WSL2..."
@@ -989,9 +1162,9 @@ else
 fi
 
 ################################################################################
-# 9. Docker Installation
+# 11. Docker Installation
 ################################################################################
-section "Step 9: Docker Installation"
+section "Step 11: Docker Installation"
 
 if $INSTALL_DOCKER; then
     log "Installing Docker CE..."
@@ -1076,9 +1249,9 @@ else
 fi
 
 ################################################################################
-# 10. NVIDIA Container Toolkit and CUDA
+# 12. NVIDIA Container Toolkit and CUDA
 ################################################################################
-section "Step 10: NVIDIA Support Installation"
+section "Step 12: NVIDIA Support Installation"
 
 if $INSTALL_NVIDIA; then
     log "Installing NVIDIA Container Toolkit..."
@@ -1240,9 +1413,9 @@ else
 fi
 
 ################################################################################
-# 11. Performance Tuning
+# 13. Performance Tuning
 ################################################################################
-section "Step 11: Performance Tuning"
+section "Step 13: Performance Tuning"
 
 if $PERFORMANCE_TUNING; then
     log "Applying performance optimizations..."
@@ -1323,9 +1496,9 @@ else
 fi
 
 ################################################################################
-# 12. Automatic Security Updates
+# 14. Automatic Security Updates
 ################################################################################
-section "Step 12: Automatic Security Updates"
+section "Step 14: Automatic Security Updates"
 
 if $ENABLE_AUTO_UPDATES; then
     log "Configuring automatic security updates..."
@@ -1359,9 +1532,9 @@ else
 fi
 
 ################################################################################
-# 13. Create Utility Scripts
+# 15. Create Utility Scripts
 ################################################################################
-section "Step 13: Creating Utility Scripts"
+section "Step 15: Creating Utility Scripts"
 
 # WSL2 Performance Monitor
 cat > /usr/local/bin/wsl2-monitor.sh <<'SCRIPT'
@@ -1484,9 +1657,9 @@ chmod +x /etc/cron.weekly/wsl2-cleanup
 log "Utility scripts created"
 
 ################################################################################
-# 14. Final Cleanup
+# 16. Final Cleanup
 ################################################################################
-section "Step 14: Final Cleanup"
+section "Step 16: Final Cleanup"
 
 log "Performing final cleanup..."
 
@@ -1501,9 +1674,9 @@ journalctl --vacuum-time=3d
 log "Final cleanup completed"
 
 ################################################################################
-# 15. Final Summary and Instructions
+# 17. Final Summary and Instructions
 ################################################################################
-section "Step 15: Installation Complete"
+section "Step 17: Installation Complete"
 
 echo ""
 echo -e "${GREEN}================================================================================${NC}"
