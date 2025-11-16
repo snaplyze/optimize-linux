@@ -667,7 +667,7 @@ trim_at = '.'
 truncation_length = 3
 truncate_to_repo = true
 style = 'blue bold'
-read_only = " 󰌾"
+read_only = " 🔒"
 format = 'in [$path]($style)[$read_only]($read_only_style) '
 
 [character]
@@ -966,6 +966,13 @@ for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
     apt-get remove -y $pkg 2>/dev/null || true
 done
 
+# Switch to iptables-legacy (Debian 13 uses nftables, Docker is incompatible)
+log "Configuring iptables-legacy for Docker compatibility..."
+safe_install iptables
+update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 100 >/dev/null 2>&1 || warn "Could not set iptables-legacy"
+update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 100 >/dev/null 2>&1 || warn "Could not set ip6tables-legacy"
+log "iptables switched to legacy mode"
+
 # Install prerequisites (ca-certificates, curl, gnupg, lsb-release already installed)
 install -m 0755 -d /etc/apt/keyrings
 
@@ -989,9 +996,33 @@ docker_packages=(
 
 safe_install "${docker_packages[@]}"
 
+# Create systemd drop-in directory for Docker service customization
+mkdir -p /etc/systemd/system/docker.service.d
+
+# Create systemd service override to fix socket activation issues
+cat > /etc/systemd/system/docker.service.d/override.conf <<'SYSTEMD_EOF'
+[Service]
+ExecStart=
+ExecStart=/usr/bin/dockerd -H unix:///var/run/docker.sock
+SYSTEMD_EOF
+
 # Enable and start Docker service
+systemctl daemon-reload
 systemctl enable docker
+systemctl enable docker.socket
+systemctl start docker.socket
 systemctl start docker
+
+# Ensure docker group exists
+groupadd -f docker
+
+# Fix docker.sock permissions
+sleep 1
+if [ -S /var/run/docker.sock ]; then
+    chown root:docker /var/run/docker.sock
+    chmod 660 /var/run/docker.sock
+    log "Docker socket permissions fixed"
+fi
 
 # Add user to docker group
 usermod -aG docker "$DOCKER_USER"
@@ -1012,12 +1043,9 @@ cat > /etc/docker/daemon.json <<EOF
     "max-file": "3"
   },
   "storage-driver": "overlay2",
-  "default-address-pools": [
-    {
-      "base": "172.17.0.0/12",
-      "size": 24
-    }
-  ]
+  "features": {
+    "buildkit": true
+  }
 }
 EOF
 
