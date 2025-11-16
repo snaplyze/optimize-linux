@@ -1122,10 +1122,33 @@ if $INSTALL_NVIDIA; then
 
             # Reload and restart Docker
             if has_systemd; then
+                log "Reloading systemd daemon..."
                 systemctl daemon-reload 2>/dev/null || true
-                systemctl start docker 2>/dev/null || warn "Warning: Docker failed to start, will try again later"
                 sleep 1
-                systemctl is-active docker >/dev/null 2>&1 && log "NVIDIA Container Toolkit configured" || warn "Docker service may not be running"
+
+                log "Starting Docker service..."
+                systemctl start docker 2>/dev/null || true
+                sleep 2
+
+                # Check Docker status with retries
+                local retry_count=0
+                local max_retries=3
+                while [ $retry_count -lt $max_retries ]; do
+                    if systemctl is-active docker >/dev/null 2>&1; then
+                        log "NVIDIA Container Toolkit configured successfully"
+                        break
+                    fi
+                    retry_count=$((retry_count + 1))
+                    if [ $retry_count -lt $max_retries ]; then
+                        warn "Docker not ready yet, waiting... ($retry_count/$max_retries)"
+                        sleep 2
+                    fi
+                done
+
+                if [ $retry_count -eq $max_retries ]; then
+                    warn "Docker service may not be running - this is not critical for NVIDIA toolkit"
+                    info "You can manually restart Docker with: sudo systemctl restart docker"
+                fi
             else
                 warn "systemd not available - cannot restart Docker automatically"
             fi
