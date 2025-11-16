@@ -983,7 +983,10 @@ if $INSTALL_DOCKER; then
     echo \
       "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$ID \
       $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-    
+
+    log "Updating package list for Docker repository..."
+    apt-get update >/dev/null 2>&1 || warn "Warning: Failed to update package list for Docker"
+
     # Install Docker Engine with availability check
     docker_packages=(
         "docker-ce"
@@ -1336,11 +1339,19 @@ df -h | grep -v tmpfs
 
 echo ""
 echo "=== WSL2 Specific ==="
-# Use tr to remove null bytes from wsl.exe output
-echo "WSL Version: $(wsl.exe --version 2>/dev/null | tr -d '\0' | head -1 || echo 'Unknown')"
+# Get WSL version - handle null bytes and binary output
+WSL_VERSION=$(wsl.exe --version 2>/dev/null | tr -d '\0' | sed 's/[^[:print:]\n]//g' | head -1)
+if [ -z "$WSL_VERSION" ]; then
+    echo "WSL Version: Unknown (wsl.exe not available or Windows integration disabled)"
+else
+    echo "WSL Version: $WSL_VERSION"
+fi
 echo "GPU Support: $([ -e /dev/dxg ] && echo 'Available' || echo 'Not Available')"
 if command -v nvidia-smi >/dev/null 2>&1; then
-    echo "NVIDIA Driver: $(nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits | head -1)"
+    NVIDIA_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits 2>/dev/null | head -1)
+    if [ -n "$NVIDIA_VERSION" ]; then
+        echo "NVIDIA Driver: $NVIDIA_VERSION"
+    fi
 fi
 
 echo ""
