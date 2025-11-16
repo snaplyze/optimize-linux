@@ -1050,7 +1050,6 @@ essential_packages=(
     "sysstat"
     "net-tools"
     "iptables"
-    "iptables-persistent"
     "ufw"
     "fail2ban"
     "unattended-upgrades"
@@ -1082,9 +1081,8 @@ essential_packages=(
 
 safe_install "${essential_packages[@]}"
 
-# Configure iptables-persistent to not ask interactively
-echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
-echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
+# Note: UFW has built-in persistent rule storage, no need for iptables-persistent
+# which conflicts with newer UFW versions in Debian 13+
 
 log "Essential packages and firewall utilities installed"
 
