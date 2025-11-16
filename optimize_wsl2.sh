@@ -352,8 +352,6 @@ if $INSTALL_BASE_UTILS; then
         "python3"
         "python3-pip"
         "python3-venv"
-        "nodejs"
-        "npm"
         "fzf"
         "ripgrep"
         "fd-find"
@@ -504,7 +502,11 @@ check_dialog() {
     # Generate locales with C.UTF-8 to avoid LC_ALL=C conflicts
     unset LC_ALL
     unset LANG
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
     locale-gen
+    unset LC_ALL
+    unset LANG
 
     # Update locale configuration file
     cat > /etc/default/locale <<EOF
@@ -513,12 +515,7 @@ LANGUAGE=${DEFAULT_LOCALE%%.*}
 LC_ALL=$DEFAULT_LOCALE
 EOF
 
-    # Export for current session
-    export LANG=$DEFAULT_LOCALE
-    export LC_ALL=$DEFAULT_LOCALE
-    export LANGUAGE=${DEFAULT_LOCALE%%.*}
-
-    # Write to profile for all users
+    # Write to profile for all users (will be sourced on login)
     cat > /etc/profile.d/locale.sh <<EOF
 export LANG=$DEFAULT_LOCALE
 export LC_ALL=$DEFAULT_LOCALE
@@ -527,9 +524,8 @@ EOF
 
     chmod +x /etc/profile.d/locale.sh
 
-    # Source the new locale settings
-    . /etc/profile.d/locale.sh 2>/dev/null || true
-
+    # DO NOT export locale in current session - it may not be fully ready
+    # Wait for restart for locale to be properly applied
     log "Locale configured: $DEFAULT_LOCALE"
     info "Locale will be fully applied after WSL restart"
 else
@@ -1101,22 +1097,35 @@ if $INSTALL_NVIDIA; then
     # Configure NVIDIA runtime - only if Docker is installed
     if command -v nvidia-ctk >/dev/null 2>&1; then
         if command -v docker >/dev/null 2>&1; then
-            # Ensure Docker daemon is valid
+            # Ensure Docker directory exists
+            mkdir -p /etc/docker
+
+            # Stop Docker before configuration if running
+            if has_systemd; then
+                systemctl stop docker 2>/dev/null || true
+                sleep 2
+            fi
+
+            # Ensure Docker daemon is valid (or create default)
             if [ ! -f /etc/docker/daemon.json ] || ! python3 -m json.tool /etc/docker/daemon.json >/dev/null 2>&1; then
-                warn "Docker daemon.json is missing or invalid, creating default..."
-                mkdir -p /etc/docker
+                log "Creating Docker daemon.json..."
                 echo '{}' > /etc/docker/daemon.json
             fi
 
-            nvidia-ctk runtime configure --runtime=docker 2>/dev/null || {
-                warn "Failed to configure NVIDIA runtime with nvidia-ctk, continuing..."
+            # Configure NVIDIA runtime
+            nvidia-ctk runtime configure --runtime=docker 2>&1 | grep -v "^INFO" || {
+                warn "nvidia-ctk configuration completed with status: $?"
             }
 
+            # Reload and restart Docker
             if has_systemd; then
                 systemctl daemon-reload 2>/dev/null || true
-                systemctl restart docker 2>/dev/null || warn "Failed to restart Docker service"
+                systemctl start docker 2>/dev/null || warn "Warning: Docker failed to start, will try again later"
+                sleep 1
+                systemctl is-active docker >/dev/null 2>&1 && log "NVIDIA Container Toolkit configured" || warn "Docker service may not be running"
+            else
+                warn "systemd not available - cannot restart Docker automatically"
             fi
-            log "NVIDIA Container Toolkit configured"
         else
             warn "Docker not installed - skipping NVIDIA runtime configuration"
             warn "Install Docker first, then run: sudo nvidia-ctk runtime configure --runtime=docker"
@@ -1304,7 +1313,8 @@ df -h | grep -v tmpfs
 
 echo ""
 echo "=== WSL2 Specific ==="
-echo "WSL Version: $(wsl.exe --version 2>/dev/null || echo 'Unknown')"
+# Use tr to remove null bytes from wsl.exe output
+echo "WSL Version: $(wsl.exe --version 2>/dev/null | tr -d '\0' | head -1 || echo 'Unknown')"
 echo "GPU Support: $([ -e /dev/dxg ] && echo 'Available' || echo 'Not Available')"
 if command -v nvidia-smi >/dev/null 2>&1; then
     echo "NVIDIA Driver: $(nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits | head -1)"
