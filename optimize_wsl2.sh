@@ -1232,24 +1232,6 @@ if $INSTALL_DOCKER; then
     "max-file": "3"
   },
   "storage-driver": "overlay2",
-  "default-address-pools": [
-    {
-      "base": "172.17.0.0/12",
-      "size": 24
-    }
-  ],
-  "default-ulimits": {
-    "nofile": {
-      "Name": "nofile",
-      "Hard": 65536,
-      "Soft": 65536
-    },
-    "nproc": {
-      "Name": "nproc",
-      "Hard": 32768,
-      "Soft": 32768
-    }
-  },
   "features": {
     "buildkit": true
   }
@@ -1258,6 +1240,21 @@ EOF
     
     # Enable and start Docker service
     if has_systemd; then
+        # Clean up any stale Docker processes and PID file
+        if [ -f /var/run/docker.pid ]; then
+            old_pid=$(cat /var/run/docker.pid 2>/dev/null || echo "")
+            if [ -n "$old_pid" ]; then
+                kill -9 "$old_pid" 2>/dev/null || true
+                sleep 1
+            fi
+            rm -f /var/run/docker.pid
+        fi
+
+        # Also try to kill any lingering dockerd processes
+        pkill -9 dockerd 2>/dev/null || true
+        sleep 1
+
+        systemctl daemon-reload
         systemctl enable docker
         systemctl start docker
         log "Docker service enabled and started"
