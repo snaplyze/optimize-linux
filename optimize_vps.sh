@@ -181,13 +181,28 @@ fi
 # Check if user already exists
 if id "$NEW_USER" &>/dev/null; then
     warn "User $NEW_USER already exists. Skipping user creation..."
-else
-    # Create user
-    adduser --gecos "" "$NEW_USER"
 
-    # Add to sudo group (docker group will be added later after Docker installation)
+    # Offer to change password for existing user
+    echo ""
+    read -p "Do you want to change password for existing user $NEW_USER? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        passwd "$NEW_USER" && log "Password changed for $NEW_USER" || warn "Failed to change password"
+    fi
+else
+    # Create user with disabled password initially (will be set below)
+    adduser --gecos "" --disabled-password "$NEW_USER" || {
+        error "Failed to create user $NEW_USER"
+        exit 1
+    }
+
+    # Add to sudo group
     usermod -aG sudo "$NEW_USER"
     log "User $NEW_USER created and added to sudo group"
+
+    # Set password for new user
+    log "Setting password for new user $NEW_USER..."
+    passwd "$NEW_USER" || warn "Failed to set password"
 fi
 
 # Store user for later use (adding to docker group)
