@@ -40,6 +40,40 @@ info() {
     echo -e "${BLUE}[INFO]${NC} $1" | tee -a "$LOG_FILE"
 }
 
+# Check if package is available in repositories
+package_available() {
+    apt-cache show "$1" >/dev/null 2>&1
+}
+
+# Safe package installation with availability check
+safe_install() {
+    local packages=("$@")
+    local available_packages=()
+    local unavailable_packages=()
+    
+    # Update package list before checking availability
+    apt-get update >/dev/null 2>&1 || warn "Failed to update package list"
+    
+    for pkg in "${packages[@]}"; do
+        if package_available "$pkg"; then
+            available_packages+=("$pkg")
+        else
+            unavailable_packages+=("$pkg")
+        fi
+    done
+    
+    if [ ${#available_packages[@]} -gt 0 ]; then
+        log "Installing available packages: ${available_packages[*]}"
+        apt-get install -y "${available_packages[@]}"
+    else
+        warn "No packages available for installation"
+    fi
+    
+    if [ ${#unavailable_packages[@]} -gt 0 ]; then
+        warn "Skipping unavailable packages: ${unavailable_packages[*]}"
+    fi
+}
+
 section() {
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
@@ -303,41 +337,45 @@ fi
 if $INSTALL_BASE_UTILS; then
     log "Installing base utilities..."
     
-    apt-get install -y \
-        curl \
-        wget \
-        git \
-        htop \
-        iotop \
-        sysstat \
-        net-tools \
-        build-essential \
-        cmake \
-        make \
-        gcc \
-        g++ \
-        python3 \
-        python3-pip \
-        python3-venv \
-        nodejs \
-        npm \
-        fzf \
-        ripgrep \
-        fd-find \
-        tree \
-        jq \
-        bat \
-        unzip \
-        zip \
-        tar \
-        xz-utils \
-        gnupg \
-        ca-certificates \
-        lsb-release \
-        apt-transport-https \
-        xdg-user-dirs \
-        neofetch \
-        bc
+    # Define packages array for easier management
+    local base_packages=(
+        "curl"
+        "wget"
+        "git"
+        "htop"
+        "iotop"
+        "sysstat"
+        "net-tools"
+        "build-essential"
+        "cmake"
+        "make"
+        "gcc"
+        "g++"
+        "python3"
+        "python3-pip"
+        "python3-venv"
+        "nodejs"
+        "npm"
+        "fzf"
+        "ripgrep"
+        "fd-find"
+        "tree"
+        "jq"
+        "bat"
+        "unzip"
+        "zip"
+        "tar"
+        "xz-utils"
+        "gnupg"
+        "ca-certificates"
+        "lsb-release"
+        "apt-transport-https"
+        "xdg-user-dirs"
+        "neofetch"
+        "bc"
+    )
+    
+    safe_install "${base_packages[@]}"
 
     # Create aliases for Debian naming
     if command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
@@ -407,8 +445,8 @@ section "Step 6: System Localization"
 if $CONFIGURE_LOCALES; then
     log "Configuring system locales..."
     
-    # Install locales package
-    apt-get install -y locales
+    # Install locales package with availability check
+    safe_install locales
     
     # Locale selection
     echo "Select system locale:"
@@ -500,8 +538,8 @@ section "Step 8: Zsh + Starship Installation"
 if $INSTALL_ZSH; then
     log "Installing Zsh and Starship..."
     
-    # Install Zsh
-    apt-get install -y zsh git curl
+    # Install Zsh with availability check
+    safe_install zsh git curl
     
     # Install Starship
     curl -sS https://starship.rs/install.sh | sh -s -- -y
@@ -892,8 +930,8 @@ section "Step 9: SSH Agent Configuration"
 if $CONFIGURE_SSH_AGENT; then
     log "Configuring SSH agent for WSL2..."
     
-    # Install openssh-client
-    apt-get install -y openssh-client
+    # Install openssh-client with availability check
+    safe_install openssh-client
     
     if has_user_systemd; then
         log "Enabling ssh-agent.socket via systemd..."
@@ -944,15 +982,16 @@ if $INSTALL_DOCKER; then
       "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$ID \
       $VERSION_CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     
-    apt-get update
+    # Install Docker Engine with availability check
+    local docker_packages=(
+        "docker-ce"
+        "docker-ce-cli"
+        "containerd.io"
+        "docker-buildx-plugin"
+        "docker-compose-plugin"
+    )
     
-    # Install Docker Engine
-    apt-get install -y \
-        docker-ce \
-        docker-ce-cli \
-        containerd.io \
-        docker-buildx-plugin \
-        docker-compose-plugin
+    safe_install "${docker_packages[@]}"
     
     # Configure Docker daemon for WSL2
     cat > /etc/docker/daemon.json <<EOF
@@ -1051,8 +1090,7 @@ if $INSTALL_NVIDIA; then
     echo "deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/deb/${ARCH}/ /" | \
         tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
     
-    apt-get update
-    apt-get install -y nvidia-container-toolkit
+    safe_install nvidia-container-toolkit
     
     # Configure NVIDIA runtime
     if command -v nvidia-ctk >/dev/null 2>&1; then
@@ -1081,11 +1119,9 @@ if $INSTALL_NVIDIA; then
         echo "deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/ /" | \
             tee /etc/apt/sources.list.d/cuda-${CUDA_REPO_PATH//\//-}.list
         
-        apt-get update
-        
-        # Install CUDA toolkit
-        if apt-cache show cuda-toolkit >/dev/null 2>&1; then
-            apt-get install -y cuda-toolkit
+        # Install CUDA toolkit with availability check
+        if package_available cuda-toolkit; then
+            safe_install cuda-toolkit
             log "CUDA Toolkit installed"
         else
             warn "cuda-toolkit package not available"
@@ -1187,7 +1223,8 @@ section "Step 13: Automatic Security Updates"
 if $ENABLE_AUTO_UPDATES; then
     log "Configuring automatic security updates..."
     
-    apt-get install -y unattended-upgrades apt-listchanges
+    # Install unattended-upgrades with availability check
+    safe_install unattended-upgrades apt-listchanges
     
     cat > /etc/apt/apt.conf.d/50unattended-upgrades <<EOF
 Unattended-Upgrade::Allowed-Origins {

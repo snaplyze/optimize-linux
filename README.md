@@ -57,8 +57,11 @@
 
 ### Для VPS:
 ```bash
-# Скачайте и запустите
-wget https://raw.githubusercontent.com/your-repo/optimize_vps.sh
+# Быстрый запуск (bash + curl)
+bash <(curl -s https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_vps.sh)
+
+# Или скачайте и запустите
+wget https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_vps.sh
 chmod +x optimize_vps.sh
 sudo ./optimize_vps.sh
 ```
@@ -69,8 +72,11 @@ sudo ./optimize_vps.sh
 wsl --update
 wsl --set-default-version 2
 
-# Скачайте и запустите в WSL2
-wget https://raw.githubusercontent.com/your-repo/optimize_wsl2.sh
+# Быстрый запуск (bash + curl)
+bash <(curl -s https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_wsl2.sh)
+
+# Или скачайте и запустите в WSL2
+wget https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_wsl2.sh
 chmod +x optimize_wsl2.sh
 sudo ./optimize_wsl2.sh
 ```
@@ -79,8 +85,8 @@ sudo ./optimize_wsl2.sh
 
 ## 📋 Подробная документация
 
-- **[VPS Documentation](README_VPS.md)** - Полное руководство по VPS оптимизации
-- **[WSL2 Documentation](README_WSL2.md)** - Подробное руководство по WSL2 оптимизации
+- **[VPS Documentation](docs/README_VPS.md)** - Полное руководство по VPS оптимизации
+- **[WSL2 Documentation](docs/README_WSL2.md)** - Подробное руководство по WSL2 оптимизации
 
 ---
 
@@ -179,10 +185,10 @@ sudo ./optimize_wsl2.sh
 ### Обновление:
 ```bash
 # VPS
-wget -O optimize_vps.sh https://raw.githubusercontent.com/your-repo/optimize_vps.sh
+wget -O optimize_vps.sh https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_vps.sh
 
 # WSL2
-wget -O optimize_wsl2.sh https://raw.githubusercontent.com/your-repo/optimize_wsl2.sh
+wget -O optimize_wsl2.sh https://raw.githubusercontent.com/snaplyze/optimize-linux/optimize_wsl2.sh
 ```
 
 ---
