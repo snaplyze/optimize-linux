@@ -1043,13 +1043,39 @@ install_go() {
     log "Installing Go to /usr/local/go..."
     tar -C /usr/local -xzf "$temp_dir/go.tar.gz"
 
-    # Add Go to PATH for all users
+    # Add Go to PATH for all users via profile.d
     cat > /etc/profile.d/golang.sh <<'GOEOF'
 export PATH=/usr/local/go/bin:$PATH
 export GOPATH=$HOME/go
 export PATH=$GOPATH/bin:$PATH
 GOEOF
     chmod +x /etc/profile.d/golang.sh
+
+    # Also add to Zsh configs if they exist
+    add_go_to_zshrc() {
+        local zshrc_path=$1
+        if [ -f "$zshrc_path" ]; then
+            if ! grep -q "golang" "$zshrc_path"; then
+                cat >> "$zshrc_path" <<'ZSHEOF'
+
+# Go environment (install-go-latest)
+export PATH=/usr/local/go/bin:$PATH
+export GOPATH=$HOME/go
+export PATH=$GOPATH/bin:$PATH
+ZSHEOF
+                log "Added Go configuration to $zshrc_path"
+            fi
+        fi
+    }
+
+    # Add to root's .zshrc
+    add_go_to_zshrc "/root/.zshrc"
+
+    # Add to regular user's .zshrc if exists
+    if [ -n "$NEW_USER" ] && $CREATE_USER; then
+        user_home=$(eval echo ~$NEW_USER)
+        add_go_to_zshrc "$user_home/.zshrc"
+    fi
 
     # Source it for current session
     export PATH=/usr/local/go/bin:$PATH
