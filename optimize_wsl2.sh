@@ -276,6 +276,8 @@ enabled=true
 options="metadata,uid=1000,gid=1000,umask=022,fmask=111"
 # Mount drives to / instead of /mnt for cleaner paths
 root=/
+# Enable case sensitivity (off, dir, or force)
+case=dir
 
 [network]
 # Generate hosts file for local development
@@ -293,10 +295,6 @@ appendWindowsPath=true
 # Default user - login with this user instead of root
 # Will be set to the created user, or leave empty to login as root
 default=
-
-[filesystem]
-# Enable case sensitivity for better compatibility
-case=sensitive
 EOF
 
     log "WSL2 configuration updated"
