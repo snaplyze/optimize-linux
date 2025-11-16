@@ -448,12 +448,26 @@ if $CONFIGURE_LOCALES; then
     # Install locales package with availability check
     safe_install locales
     
-    # Locale selection
+    # Check if dialog is available, fallback to read if not
+check_dialog() {
+    if command -v dialog >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Locale selection
     echo "Select system locale:"
     echo "1) en_US.UTF-8 (English)"
     echo "2) ru_RU.UTF-8 (Russian)"
     echo "3) Both (en_US.UTF-8 + ru_RU.UTF-8)"
-    read -p "Enter choice [1-3]: " LOCALE_CHOICE
+    
+    if check_dialog; then
+        LOCALE_CHOICE=$(dialog --title "Locale Selection" --menu "Select locale:" --radiolist "1" "English (en_US.UTF-8)" "2" "Russian (ru_RU.UTF-8)" "3" "Both (en_US.UTF-8 + ru_RU.UTF-8)" --default "1")
+    else
+        read -p "Enter choice [1-3]: " LOCALE_CHOICE
+    fi
     
     case $LOCALE_CHOICE in
         1)

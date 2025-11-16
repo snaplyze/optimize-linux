@@ -78,6 +78,15 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+# Check if dialog is available, fallback to read if not
+check_dialog() {
+    if command -v dialog >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 log "=== Starting VPS Optimization ==="
 
 ################################################################################
