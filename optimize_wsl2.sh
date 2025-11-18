@@ -271,10 +271,12 @@ systemd=true
 [automount]
 # Enable metadata for proper file permissions
 enabled=true
-# Mount drives to / instead of /mnt for cleaner paths
-root=/
-# Combined options: metadata for permissions, case sensitivity set to 'dir', and ownership settings
-options="metadata,case=dir,uid=1000,gid=1000,umask=022,fmask=111"
+# Mount Windows drives to /mnt (standard WSL behavior)
+# C: will be /mnt/c, D: will be /mnt/d, etc.
+root=/mnt
+# Combined options: metadata for permissions, case sensitivity, umask for directories
+# Note: fmask removed to allow Windows executables (like VSCode scripts) to work
+options="metadata,case=dir,umask=022"
 
 [network]
 # Generate hosts file for local development
@@ -600,6 +602,29 @@ if $INSTALL_ZSH; then
         cat > "$user_home/.zshrc" <<'ZSHRC'
 # WSL2 Optimized Zsh Configuration
 
+# Fix VSCode Remote WSL terminal error with __vsc_update_env
+# This must be at the top to override VSCode's function
+if [[ -n "$VSCODE_INJECTION" ]] || [[ "$TERM_PROGRAM" == "vscode" ]]; then
+    # Define a safe version of __vsc_update_env function
+    # The original VSCode function conflicts with KSH_ARRAYS and other Zsh options
+    __vsc_update_env() {
+        emulate -L zsh
+        setopt LOCAL_OPTIONS
+        unsetopt KSH_ARRAYS
+        local -a args
+        args=("${(@)@}")
+        local key value
+        for arg in "${args[@]}"; do
+            key="${arg%%=*}"
+            value="${arg#*=}"
+            # Only export if key exists and contains =
+            if [[ -n "$key" && "$key" != "$arg" ]]; then
+                export "$key=$value"
+            fi
+        done
+    }
+fi
+
 # History configuration
 HISTSIZE=50000
 SAVEHIST=50000
@@ -648,7 +673,11 @@ zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path ~/.zsh/cache
 
 # Bash compatibility
-setopt BASH_REMATCH KSH_ARRAYS
+setopt BASH_REMATCH
+# Only enable KSH_ARRAYS outside of VSCode terminal (it conflicts with VSCode's __vsc_update_env)
+if [[ -z "$VSCODE_INJECTION" && "$TERM_PROGRAM" != "vscode" ]]; then
+    setopt KSH_ARRAYS
+fi
 autoload -Uz bashcompinit && bashcompinit
 
 # Key bindings
@@ -1100,25 +1129,63 @@ install_nvm_for_user() {
 
     log "Installing NVM for user: $username"
 
-    # Set environment for NVM installation
-    export HOME=$user_home
+    # Create NVM installation script that runs as the target user
+    local nvm_install_script="/tmp/nvm_install_${username}.sh"
+
+    cat > "$nvm_install_script" <<'NVMINSTALL'
+#!/bin/bash
+# This script runs as the target user to install NVM
+
+export HOME="$1"
+export USER="$2"
+
+# Get latest NVM version from GitHub API
+NVM_VERSION=$(curl -s https://api.github.com/repos/nvm-sh/nvm/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+# Fallback to known stable version if API fails
+if [ -z "$NVM_VERSION" ]; then
+    NVM_VERSION="v0.40.1"
+    echo "Warning: Could not fetch latest NVM version, using fallback: $NVM_VERSION"
+else
+    echo "Installing NVM version: $NVM_VERSION"
+fi
+
+# Download and install NVM
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash
+
+# Source NVM
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# Install Node.js LTS
+nvm install --lts
+nvm alias default lts/*
+nvm use default
+
+# Output versions for verification
+node --version
+npm --version
+NVMINSTALL
+
+    chmod +x "$nvm_install_script"
+
+    # Run the installation script as the target user
+    if [ "$username" = "root" ]; then
+        # For root, run directly
+        bash "$nvm_install_script" "$user_home" "$username"
+    else
+        # For non-root users, use su to run as that user
+        su - "$username" -c "bash $nvm_install_script $user_home $username"
+    fi
+
+    # Verify installation
     export NVM_DIR="$user_home/.nvm"
-
-    # Download and install NVM
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash >/dev/null 2>&1
-
-    # Source NVM
-    export NVM_DIR="$user_home/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-
-    # Install Node.js LTS
-    log "Installing Node.js LTS for $username..."
-    nvm install --lts >/dev/null 2>&1
-    nvm alias default lts/* >/dev/null 2>&1
-
-    log "Node.js installed: $(node --version)"
-    log "npm version: $(npm --version)"
+    if [ -s "$NVM_DIR/nvm.sh" ]; then
+        log "NVM installed successfully for $username"
+    else
+        warn "NVM installation may have failed for $username"
+    fi
 
     # Create .zshrc addition for NVM if using Zsh
     if [ -f "$user_home/.zshrc" ]; then
@@ -1134,8 +1201,15 @@ NVMEOF
         fi
     fi
 
-    # Set ownership
-    chown -R "$username:$username" "$NVM_DIR" 2>/dev/null || true
+    # Ensure all NVM files have correct ownership
+    chown -R "$username:$username" "$user_home/.nvm" 2>/dev/null || true
+    chown -R "$username:$username" "$user_home/.npm" 2>/dev/null || true
+    chown "$username:$username" "$user_home/.zshrc" 2>/dev/null || true
+
+    # Clean up
+    rm -f "$nvm_install_script"
+
+    log "NVM setup completed for $username"
 }
 
 # Install NVM for root
