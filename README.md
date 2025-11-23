@@ -20,6 +20,22 @@
 
 ---
 
+### 🏠 Mini PC Optimization (`optimize_mini_pc.sh`)
+**Назначение:** Оптимизация домашних серверов (Intel N5095/Jasper Lake)
+- **Поддерживаемые ОС:** Debian 13 (Trixie)
+- **Особенности:** XanMod x64v2, Intel QuickSync (GPU), SSD тюнинг
+- **Использование:** `sudo ./optimize_mini_pc.sh`
+
+**Ключевые возможности:**
+- 🔧 **Intel N5095 Tuning:** Ядро XanMod x64v2 (без AVX), CPU governor `schedutil`
+- 🎞️ **Media Server:** Драйверы Intel GPU (QuickSync), группы `render/video`
+- 💾 **SSD Optimization:** I/O scheduler `mq-deadline`, `fstrim`, `noatime`
+- 🐳 **Full Stack:** Docker, Go, Node.js/NVM, Zsh + Starship
+- 📂 **Samba:** Опциональная настройка файлового шаринга
+- 🛡️ **Security:** UFW, Fail2Ban, SSH Hardening
+
+---
+
 ### 🐧 WSL2 Optimization (`optimize_wsl2.sh`)
 **Назначение:** Оптимизация WSL2 для Debian 12/13
 - **Поддерживаемые ОС:** Debian 12/13 (Bookworm/Trixie)
@@ -90,6 +106,7 @@ sudo ./optimize_wsl2.sh
 ## 📋 Подробная документация
 
 - **[VPS Documentation](docs/README_VPS.md)** - Полное руководство по VPS оптимизации
+- **[Mini PC Documentation](docs/README_MINI_PC.md)** - Руководство по настройке Intel N5095 (Jasper Lake)
 - **[WSL2 Documentation](docs/README_WSL2.md)** - Подробное руководство по WSL2 оптимизации
 
 ## 🔧 Известные исправления

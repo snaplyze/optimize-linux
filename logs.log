@@ -1,0 +1,938 @@
+snaplyze in 🌐 mini-s in ~
+❯ cat /etc/os-release
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+NAME="Debian GNU/Linux"
+VERSION_ID="13"
+VERSION="13 (trixie)"
+VERSION_CODENAME=trixie
+DEBIAN_VERSION_FULL=13.1
+ID=debian
+HOME_URL="https://www.debian.org/"
+SUPPORT_URL="https://www.debian.org/support"
+BUG_REPORT_URL="https://bugs.debian.org/"
+
+snaplyze in 🌐 mini-s in ~
+❯ uname -a
+Linux mini-s 6.16.9-x64v2-xanmod1 #0~20250925.g836ee36 SMP PREEMPT_DYNAMIC Thu Sep 25 15:20:19 UTC x86_64 GNU/Linux
+
+snaplyze in 🌐 mini-s in ~
+❯ uname -m
+x86_64
+
+snaplyze in 🌐 mini-s in ~
+❯ hostnamectl
+Failed to query product UUID, ignoring: Access denied
+Failed to query hardware serial, ignoring: Access denied
+ Static hostname: mini-s
+       Icon name: computer-desktop
+         Chassis: desktop 🖥️
+      Machine ID: 93bcb07a8bd343eca442ccc623352a74
+         Boot ID: a0dbf4789fe840c8b5a8cff5fdbee900
+Operating System: Debian GNU/Linux 13 (trixie)
+          Kernel: Linux 6.16.9-x64v2-xanmod1
+    Architecture: x86-64
+ Hardware Vendor: AZW
+  Hardware Model: MINI S
+Firmware Version: JTKT001
+   Firmware Date: Wed 2022-04-13
+    Firmware Age: 3y 7month 1w 4d
+
+snaplyze in 🌐 mini-s in ~
+❯ lscpu
+Architecture:                x86_64
+  CPU op-mode(s):            32-bit, 64-bit
+  Address sizes:             39 bits physical, 48 bits virtual
+  Byte Order:                Little Endian
+CPU(s):                      4
+  On-line CPU(s) list:       0-3
+Vendor ID:                   GenuineIntel
+  Model name:                Intel(R) Celeron(R) N5095 @ 2.00GHz
+    CPU family:              6
+    Model:                   156
+    Thread(s) per core:      1
+    Core(s) per socket:      4
+    Socket(s):               1
+    Stepping:                0
+    CPU(s) scaling MHz:      95%
+    CPU max MHz:             2900,0000
+    CPU min MHz:             800,0000
+    BogoMIPS:                3993,60
+    Flags:                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mm
+                             x fxsr sse sse2 ss ht tm pbe syscall nx rdtscp lm constant_tsc art arch_perfmon pebs bts re
+                             p_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 moni
+                             tor ds_cpl vmx est tm2 ssse3 sdbg cx16 xtpr pdcm sse4_1 sse4_2 x2apic movbe popcnt tsc_dead
+                             line_timer aes xsave rdrand lahf_lm 3dnowprefetch cpuid_fault epb cat_l2 cdp_l2 ssbd ibrs i
+                             bpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust smep er
+                             ms rdt_a rdseed smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_l
+                             ock_detect dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req vnmi u
+                             mip waitpkg gfni rdpid movdiri movdir64b md_clear flush_l1d arch_capabilities
+Virtualization features:
+  Virtualization:            VT-x
+Caches (sum of all):
+  L1d:                       128 KiB (4 instances)
+  L1i:                       128 KiB (4 instances)
+  L2:                        1,5 MiB (1 instance)
+  L3:                        4 MiB (1 instance)
+NUMA:
+  NUMA node(s):              1
+  NUMA node0 CPU(s):         0-3
+Vulnerabilities:
+  Gather data sampling:      Not affected
+  Ghostwrite:                Not affected
+  Indirect target selection: Not affected
+  Itlb multihit:             Not affected
+  L1tf:                      Not affected
+  Mds:                       Not affected
+  Meltdown:                  Not affected
+  Mmio stale data:           Mitigation; Clear CPU buffers; SMT disabled
+  Old microcode:             Not affected
+  Reg file data sampling:    Mitigation; Clear Register File
+  Retbleed:                  Not affected
+  Spec rstack overflow:      Not affected
+  Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl
+  Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+  Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS Not affected; BHI SW l
+                             oop, KVM SW loop
+  Srbds:                     Vulnerable: No microcode
+  Tsa:                       Not affected
+  Tsx async abort:           Not affected
+  Vmscape:                   Not affected
+
+snaplyze in 🌐 mini-s in ~
+❯ cat /proc/cpuinfo
+processor       : 0
+vendor_id       : GenuineIntel
+cpu family      : 6
+model           : 156
+model name      : Intel(R) Celeron(R) N5095 @ 2.00GHz
+stepping        : 0
+microcode       : 0x24000026
+cpu MHz         : 2450.624
+cache size      : 4096 KB
+physical id     : 0
+siblings        : 4
+core id         : 0
+cpu cores       : 4
+apicid          : 0
+initial apicid  : 0
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 27
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg cx16 xtpr pdcm sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave rdrand lahf_lm 3dnowprefetch cpuid_fault epb cat_l2 cdp_l2 ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust smep erms rdt_a rdseed smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req vnmi umip waitpkg gfni rdpid movdiri movdir64b md_clear flush_l1d arch_capabilities
+vmx flags       : vnmi preemption_timer posted_intr invvpid ept_x_only ept_ad flexpriority apicv tsc_offset vtpr mtf vapic ept vpid unrestricted_guest vapic_reg vid ple shadow_vmcs ept_violation_ve ept_mode_based_exec tsc_scaling usr_wait_pause
+bugs            : spectre_v1 spectre_v2 spec_store_bypass swapgs srbds mmio_stale_data rfds bhi spectre_v2_user
+bogomips        : 3993.60
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 39 bits physical, 48 bits virtual
+power management:
+
+processor       : 1
+vendor_id       : GenuineIntel
+cpu family      : 6
+model           : 156
+model name      : Intel(R) Celeron(R) N5095 @ 2.00GHz
+stepping        : 0
+microcode       : 0x24000026
+cpu MHz         : 800.000
+cache size      : 4096 KB
+physical id     : 0
+siblings        : 4
+core id         : 1
+cpu cores       : 4
+apicid          : 2
+initial apicid  : 2
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 27
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg cx16 xtpr pdcm sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave rdrand lahf_lm 3dnowprefetch cpuid_fault epb cat_l2 cdp_l2 ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust smep erms rdt_a rdseed smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req vnmi umip waitpkg gfni rdpid movdiri movdir64b md_clear flush_l1d arch_capabilities
+vmx flags       : vnmi preemption_timer posted_intr invvpid ept_x_only ept_ad flexpriority apicv tsc_offset vtpr mtf vapic ept vpid unrestricted_guest vapic_reg vid ple shadow_vmcs ept_violation_ve ept_mode_based_exec tsc_scaling usr_wait_pause
+bugs            : spectre_v1 spectre_v2 spec_store_bypass swapgs srbds mmio_stale_data rfds bhi spectre_v2_user
+bogomips        : 3993.60
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 39 bits physical, 48 bits virtual
+power management:
+
+processor       : 2
+vendor_id       : GenuineIntel
+cpu family      : 6
+model           : 156
+model name      : Intel(R) Celeron(R) N5095 @ 2.00GHz
+stepping        : 0
+microcode       : 0x24000026
+cpu MHz         : 2503.822
+cache size      : 4096 KB
+physical id     : 0
+siblings        : 4
+core id         : 2
+cpu cores       : 4
+apicid          : 4
+initial apicid  : 4
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 27
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg cx16 xtpr pdcm sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave rdrand lahf_lm 3dnowprefetch cpuid_fault epb cat_l2 cdp_l2 ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust smep erms rdt_a rdseed smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req vnmi umip waitpkg gfni rdpid movdiri movdir64b md_clear flush_l1d arch_capabilities
+vmx flags       : vnmi preemption_timer posted_intr invvpid ept_x_only ept_ad flexpriority apicv tsc_offset vtpr mtf vapic ept vpid unrestricted_guest vapic_reg vid ple shadow_vmcs ept_violation_ve ept_mode_based_exec tsc_scaling usr_wait_pause
+bugs            : spectre_v1 spectre_v2 spec_store_bypass swapgs srbds mmio_stale_data rfds bhi spectre_v2_user
+bogomips        : 3993.60
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 39 bits physical, 48 bits virtual
+power management:
+
+processor       : 3
+vendor_id       : GenuineIntel
+cpu family      : 6
+model           : 156
+model name      : Intel(R) Celeron(R) N5095 @ 2.00GHz
+stepping        : 0
+microcode       : 0x24000026
+cpu MHz         : 2153.143
+cache size      : 4096 KB
+physical id     : 0
+siblings        : 4
+core id         : 3
+cpu cores       : 4
+apicid          : 6
+initial apicid  : 6
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 27
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg cx16 xtpr pdcm sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave rdrand lahf_lm 3dnowprefetch cpuid_fault epb cat_l2 cdp_l2 ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust smep erms rdt_a rdseed smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req vnmi umip waitpkg gfni rdpid movdiri movdir64b md_clear flush_l1d arch_capabilities
+vmx flags       : vnmi preemption_timer posted_intr invvpid ept_x_only ept_ad flexpriority apicv tsc_offset vtpr mtf vapic ept vpid unrestricted_guest vapic_reg vid ple shadow_vmcs ept_violation_ve ept_mode_based_exec tsc_scaling usr_wait_pause
+bugs            : spectre_v1 spectre_v2 spec_store_bypass swapgs srbds mmio_stale_data rfds bhi spectre_v2_user
+bogomips        : 3993.60
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 39 bits physical, 48 bits virtual
+power management:
+
+
+snaplyze in 🌐 mini-s in ~
+❯ free -h
+               total        used        free      shared  buff/cache   available
+Mem:            15Gi       2,0Gi       2,4Gi       2,2Mi        11Gi        13Gi
+Swap:           15Gi       4,0Ki        15Gi
+
+snaplyze in 🌐 mini-s in ~
+❯ cat /proc/meminfo
+MemTotal:       16149296 kB
+MemFree:         2485360 kB
+MemAvailable:   14099388 kB
+Buffers:         1012984 kB
+Cached:         10434568 kB
+SwapCached:            4 kB
+Active:          3949404 kB
+Inactive:        8919488 kB
+Active(anon):    1215024 kB
+Inactive(anon):   208500 kB
+Active(file):    2734380 kB
+Inactive(file):  8710988 kB
+Unevictable:          88 kB
+Mlocked:               0 kB
+SwapTotal:      16549884 kB
+SwapFree:       16549880 kB
+Zswap:                 0 kB
+Zswapped:              0 kB
+Dirty:               620 kB
+Writeback:             0 kB
+AnonPages:       1418056 kB
+Mapped:           338496 kB
+Shmem:              2264 kB
+KReclaimable:     510536 kB
+Slab:             642556 kB
+SReclaimable:     510536 kB
+SUnreclaim:       132020 kB
+KernelStack:        7520 kB
+PageTables:        14164 kB
+SecPageTables:      2056 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:    24624532 kB
+Committed_AS:    5975508 kB
+VmallocTotal:   34359738367 kB
+VmallocUsed:       50672 kB
+VmallocChunk:          0 kB
+Percpu:             9216 kB
+HardwareCorrupted:     0 kB
+AnonHugePages:   1165312 kB
+ShmemHugePages:        0 kB
+ShmemPmdMapped:        0 kB
+FileHugePages:    145408 kB
+FilePmdMapped:    126976 kB
+CmaTotal:              0 kB
+CmaFree:               0 kB
+Unaccepted:            0 kB
+Balloon:               0 kB
+HugePages_Total:       0
+HugePages_Free:        0
+HugePages_Rsvd:        0
+HugePages_Surp:        0
+Hugepagesize:       2048 kB
+Hugetlb:               0 kB
+DirectMap4k:      147096 kB
+DirectMap2M:    16404480 kB
+
+snaplyze in 🌐 mini-s in ~
+❯ lsblk -o NAME,FSTYPE,SIZE,TYPE,MOUNTPOINT
+NAME   FSTYPE   SIZE TYPE MOUNTPOINT
+sda           476,9G disk
+├─sda1 vfat     976M part /boot/efi
+├─sda2 ext4   460,2G part /
+└─sda3 swap    15,8G part [SWAP]
+sdb             1,8T disk
+└─sdb1 ext4     1,8T part /mnt/ssd
+
+snaplyze in 🌐 mini-s in ~
+❯ sudo smartctl -a /dev/sda
+smartctl 7.4 2023-08-01 r5530 [x86_64-linux-6.16.9-x64v2-xanmod1] (local build)
+Copyright (C) 2002-23, Bruce Allen, Christian Franke, www.smartmontools.org
+
+=== START OF INFORMATION SECTION ===
+Device Model:     Netac SSD 512GB
+Serial Number:    AA20230131512G475823
+Firmware Version: V0718B0
+User Capacity:    512 110 190 592 bytes [512 GB]
+Sector Size:      512 bytes logical/physical
+Rotation Rate:    Solid State Device
+Form Factor:      M.2
+TRIM Command:     Available
+Device is:        Not in smartctl database 7.3/5528
+ATA Version is:   ACS-2 T13/2015-D revision 3
+SATA Version is:  SATA 3.2, 6.0 Gb/s (current: 6.0 Gb/s)
+Local Time is:    Sun Nov 23 02:36:11 2025 MSK
+SMART support is: Available - device has SMART capability.
+SMART support is: Enabled
+
+=== START OF READ SMART DATA SECTION ===
+SMART overall-health self-assessment test result: PASSED
+
+General SMART Values:
+Offline data collection status:  (0x02) Offline data collection activity
+                                        was completed without error.
+                                        Auto Offline Data Collection: Disabled.
+Self-test execution status:      (   0) The previous self-test routine completed
+                                        without error or no self-test has ever
+                                        been run.
+Total time to complete Offline
+data collection:                (  120) seconds.
+Offline data collection
+capabilities:                    (0x11) SMART execute Offline immediate.
+                                        No Auto Offline data collection support.
+                                        Suspend Offline collection upon new
+                                        command.
+                                        No Offline surface scan supported.
+                                        Self-test supported.
+                                        No Conveyance Self-test supported.
+                                        No Selective Self-test supported.
+SMART capabilities:            (0x0002) Does not save SMART data before
+                                        entering power-saving mode.
+                                        Supports SMART auto save timer.
+Error logging capability:        (0x01) Error logging supported.
+                                        General Purpose Logging supported.
+Short self-test routine
+recommended polling time:        (   2) minutes.
+Extended self-test routine
+recommended polling time:        (  10) minutes.
+SCT capabilities:              (0x0001) SCT Status supported.
+
+SMART Attributes Data Structure revision number: 1
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x0032   100   100   050    Old_age   Always       -       0
+  5 Reallocated_Sector_Ct   0x0032   100   100   050    Old_age   Always       -       0
+  9 Power_On_Hours          0x0032   100   100   050    Old_age   Always       -       20088
+ 12 Power_Cycle_Count       0x0032   100   100   050    Old_age   Always       -       963
+160 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       0
+161 Unknown_Attribute       0x0033   100   100   050    Pre-fail  Always       -       100
+163 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       18
+164 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       40858
+165 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       119
+166 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       101
+167 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       108
+168 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       5050
+169 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       98
+175 Program_Fail_Count_Chip 0x0032   100   100   050    Old_age   Always       -       0
+176 Erase_Fail_Count_Chip   0x0032   100   100   050    Old_age   Always       -       0
+177 Wear_Leveling_Count     0x0032   100   100   050    Old_age   Always       -       0
+178 Used_Rsvd_Blk_Cnt_Chip  0x0032   100   100   050    Old_age   Always       -       0
+181 Program_Fail_Cnt_Total  0x0032   100   100   050    Old_age   Always       -       0
+182 Erase_Fail_Count_Total  0x0032   100   100   050    Old_age   Always       -       0
+192 Power-Off_Retract_Count 0x0032   100   100   050    Old_age   Always       -       838
+194 Temperature_Celsius     0x0022   100   100   050    Old_age   Always       -       49
+195 Hardware_ECC_Recovered  0x0032   100   100   050    Old_age   Always       -       4754381
+196 Reallocated_Event_Count 0x0032   100   100   050    Old_age   Always       -       0
+197 Current_Pending_Sector  0x0032   100   100   050    Old_age   Always       -       0
+198 Offline_Uncorrectable   0x0032   100   100   050    Old_age   Always       -       0
+199 UDMA_CRC_Error_Count    0x0032   100   100   050    Old_age   Always       -       0
+232 Available_Reservd_Space 0x0032   100   100   050    Old_age   Always       -       100
+241 Total_LBAs_Written      0x0030   100   100   050    Old_age   Offline      -       559457
+242 Total_LBAs_Read         0x0030   100   100   050    Old_age   Offline      -       588484
+245 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       421740
+
+SMART Error Log Version: 1
+No Errors Logged
+
+SMART Self-test log structure revision number 1
+Num  Test_Description    Status                  Remaining  LifeTime(hours)  LBA_of_first_error
+# 1  Short offline       Completed without error       00%     20088         -
+# 2  Short offline       Completed without error       00%     20064         -
+# 3  Short offline       Completed without error       00%     20040         -
+# 4  Short offline       Completed without error       00%     20016         -
+# 5  Short offline       Completed without error       00%     19992         -
+# 6  Short offline       Completed without error       00%     19968         -
+# 7  Short offline       Completed without error       00%     19944         -
+# 8  Short offline       Completed without error       00%     19921         -
+# 9  Short offline       Completed without error       00%     19897         -
+#10  Short offline       Completed without error       00%     19873         -
+#11  Short offline       Completed without error       00%     19849         -
+#12  Short offline       Completed without error       00%     19825         -
+#13  Short offline       Completed without error       00%     19801         -
+#14  Short offline       Completed without error       00%     19777         -
+#15  Short offline       Completed without error       00%     19753         -
+#16  Short offline       Completed without error       00%     19729         -
+#17  Short offline       Completed without error       00%     19705         -
+#18  Short offline       Completed without error       00%     19681         -
+#19  Short offline       Completed without error       00%     19657         -
+#20  Short offline       Completed without error       00%     19633         -
+#21  Short offline       Completed without error       00%     19609         -
+
+Selective Self-tests/Logging not supported
+
+The above only provides legacy SMART information - try 'smartctl -x' for more
+
+
+snaplyze in 🌐 mini-s in ~
+❯ sudo smartctl -a /dev/sdb
+smartctl 7.4 2023-08-01 r5530 [x86_64-linux-6.16.9-x64v2-xanmod1] (local build)
+Copyright (C) 2002-23, Bruce Allen, Christian Franke, www.smartmontools.org
+
+=== START OF INFORMATION SECTION ===
+Device Model:     Netac SSD 2TB
+Serial Number:    AA202303102TB4657275
+Firmware Version: V0718B0
+User Capacity:    2 000 398 934 016 bytes [2,00 TB]
+Sector Size:      512 bytes logical/physical
+Rotation Rate:    Solid State Device
+Form Factor:      2.5 inches
+TRIM Command:     Available
+Device is:        Not in smartctl database 7.3/5528
+ATA Version is:   ACS-2 T13/2015-D revision 3
+SATA Version is:  SATA 3.2, 6.0 Gb/s (current: 6.0 Gb/s)
+Local Time is:    Sun Nov 23 02:36:14 2025 MSK
+SMART support is: Available - device has SMART capability.
+SMART support is: Enabled
+
+=== START OF READ SMART DATA SECTION ===
+SMART overall-health self-assessment test result: PASSED
+
+General SMART Values:
+Offline data collection status:  (0x02) Offline data collection activity
+                                        was completed without error.
+                                        Auto Offline Data Collection: Disabled.
+Self-test execution status:      (   0) The previous self-test routine completed
+                                        without error or no self-test has ever
+                                        been run.
+Total time to complete Offline
+data collection:                (  120) seconds.
+Offline data collection
+capabilities:                    (0x11) SMART execute Offline immediate.
+                                        No Auto Offline data collection support.
+                                        Suspend Offline collection upon new
+                                        command.
+                                        No Offline surface scan supported.
+                                        Self-test supported.
+                                        No Conveyance Self-test supported.
+                                        No Selective Self-test supported.
+SMART capabilities:            (0x0002) Does not save SMART data before
+                                        entering power-saving mode.
+                                        Supports SMART auto save timer.
+Error logging capability:        (0x01) Error logging supported.
+                                        General Purpose Logging supported.
+Short self-test routine
+recommended polling time:        (   2) minutes.
+Extended self-test routine
+recommended polling time:        (  10) minutes.
+SCT capabilities:              (0x0001) SCT Status supported.
+
+SMART Attributes Data Structure revision number: 1
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x0032   100   100   050    Old_age   Always       -       0
+  5 Reallocated_Sector_Ct   0x0032   100   100   050    Old_age   Always       -       0
+  9 Power_On_Hours          0x0032   100   100   050    Old_age   Always       -       20045
+ 12 Power_Cycle_Count       0x0032   100   100   050    Old_age   Always       -       964
+160 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       0
+161 Unknown_Attribute       0x0033   100   100   050    Pre-fail  Always       -       100
+163 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       15
+164 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       245
+165 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       34
+166 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       6
+167 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       33
+168 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       5050
+169 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       100
+175 Program_Fail_Count_Chip 0x0032   100   100   050    Old_age   Always       -       0
+176 Erase_Fail_Count_Chip   0x0032   100   100   050    Old_age   Always       -       0
+177 Wear_Leveling_Count     0x0032   100   100   050    Old_age   Always       -       0
+178 Used_Rsvd_Blk_Cnt_Chip  0x0032   100   100   050    Old_age   Always       -       0
+181 Program_Fail_Cnt_Total  0x0032   100   100   050    Old_age   Always       -       0
+182 Erase_Fail_Count_Total  0x0032   100   100   050    Old_age   Always       -       0
+192 Power-Off_Retract_Count 0x0032   100   100   050    Old_age   Always       -       830
+194 Temperature_Celsius     0x0022   100   100   050    Old_age   Always       -       46
+195 Hardware_ECC_Recovered  0x0032   100   100   050    Old_age   Always       -       1407790
+196 Reallocated_Event_Count 0x0032   100   100   050    Old_age   Always       -       0
+197 Current_Pending_Sector  0x0032   100   100   050    Old_age   Always       -       0
+198 Offline_Uncorrectable   0x0032   100   100   050    Old_age   Always       -       0
+199 UDMA_CRC_Error_Count    0x0032   100   100   050    Old_age   Always       -       0
+232 Available_Reservd_Space 0x0032   100   100   050    Old_age   Always       -       100
+241 Total_LBAs_Written      0x0030   100   100   050    Old_age   Offline      -       231046
+242 Total_LBAs_Read         0x0030   100   100   050    Old_age   Offline      -       714545
+245 Unknown_Attribute       0x0032   100   100   050    Old_age   Always       -       248880
+
+SMART Error Log Version: 1
+No Errors Logged
+
+SMART Self-test log structure revision number 1
+Num  Test_Description    Status                  Remaining  LifeTime(hours)  LBA_of_first_error
+# 1  Short offline       Completed without error       00%     20045         -
+# 2  Short offline       Completed without error       00%     20021         -
+# 3  Short offline       Completed without error       00%     19997         -
+# 4  Short offline       Completed without error       00%     19973         -
+# 5  Short offline       Completed without error       00%     19949         -
+# 6  Short offline       Completed without error       00%     19925         -
+# 7  Short offline       Completed without error       00%     19901         -
+# 8  Short offline       Completed without error       00%     19877         -
+# 9  Short offline       Completed without error       00%     19853         -
+#10  Short offline       Completed without error       00%     19829         -
+#11  Short offline       Completed without error       00%     19805         -
+#12  Short offline       Completed without error       00%     19781         -
+#13  Short offline       Completed without error       00%     19757         -
+#14  Short offline       Completed without error       00%     19733         -
+#15  Short offline       Completed without error       00%     19709         -
+#16  Short offline       Completed without error       00%     19685         -
+#17  Short offline       Completed without error       00%     19661         -
+#18  Short offline       Completed without error       00%     19637         -
+#19  Short offline       Completed without error       00%     19613         -
+#20  Short offline       Completed without error       00%     19589         -
+#21  Short offline       Completed without error       00%     19565         -
+
+Selective Self-tests/Logging not supported
+
+The above only provides legacy SMART information - try 'smartctl -x' for more
+
+
+snaplyze in 🌐 mini-s in ~
+❯ sudo fdisk -l
+Disk /dev/sda: 476,94 GiB, 512110190592 bytes, 1000215216 sectors
+Disk model: Netac SSD 512GB
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: A536C296-E20E-48D7-B4D2-BFA224EB339C
+
+Device         Start        End   Sectors   Size Type
+/dev/sda1       2048    2000895   1998848   976M EFI System
+/dev/sda2    2000896  967114751 965113856 460,2G Linux filesystem
+/dev/sda3  967114752 1000214527  33099776  15,8G Linux swap
+
+
+Disk /dev/sdb: 1,82 TiB, 2000398934016 bytes, 3907029168 sectors
+Disk model: Netac SSD 2TB
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: 4AC9637B-2046-49EA-8011-FAFFA0593D99
+
+Device     Start        End    Sectors  Size Type
+/dev/sdb1   2048 3907028991 3907026944  1,8T Linux filesystem
+
+snaplyze in 🌐 mini-s in ~
+❯ lspci | grep -i vga
+00:02.0 VGA compatible controller: Intel Corporation JasperLake [UHD Graphics] (rev 01)
+
+snaplyze in 🌐 mini-s in ~
+❯ lspci -vvv
+00:00.0 Host bridge: Intel Corporation Device 4e24
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B+ ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort+ >SERR- <PERR- INTx-
+        Latency: 0
+        Capabilities: <access denied>
+
+00:02.0 VGA compatible controller: Intel Corporation JasperLake [UHD Graphics] (rev 01) (prog-if 00 [VGA controller])
+        DeviceName: Onboard - Video
+        Subsystem: Intel Corporation Device 2212
+        Control: I/O+ Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin A routed to IRQ 130
+        Region 0: Memory at 6000000000 (64-bit, non-prefetchable) [size=16M]
+        Region 2: Memory at 4000000000 (64-bit, prefetchable) [size=256M]
+        Region 4: I/O ports at 4000 [size=64]
+        Expansion ROM at 000c0000 [virtual] [disabled] [size=128K]
+        Capabilities: <access denied>
+        Kernel driver in use: i915
+        Kernel modules: i915
+
+00:04.0 Signal processing controller: Intel Corporation Dynamic Tuning service
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster- SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B+ ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Interrupt: pin A routed to IRQ 16
+        Region 0: Memory at 6001110000 (64-bit, non-prefetchable) [size=64K]
+        Capabilities: <access denied>
+        Kernel modules: processor_thermal_device_pci_legacy
+
+00:14.0 USB controller: Intel Corporation Jasper Lake USB 3.1 xHCI Host Controller (rev 01) (prog-if 30 [XHCI])
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+        Status: Cap+ 66MHz- UDF- FastB2B+ ParErr- DEVSEL=medium >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0
+        Interrupt: pin A routed to IRQ 123
+        Region 0: Memory at 6001100000 (64-bit, non-prefetchable) [size=64K]
+        Capabilities: <access denied>
+        Kernel driver in use: xhci_hcd
+
+00:14.2 RAM memory: Intel Corporation Jasper Lake Shared SRAM (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem- BusMaster- SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Region 0: Memory at 6001124000 (64-bit, non-prefetchable) [disabled] [size=8K]
+        Region 2: Memory at 6001130000 (64-bit, non-prefetchable) [disabled] [size=4K]
+        Capabilities: <access denied>
+
+00:15.0 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #0 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin A routed to IRQ 16
+        Region 0: Memory at 4010000000 (64-bit, non-prefetchable) [size=4K]
+        Capabilities: <access denied>
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+
+00:15.1 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #1 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin B routed to IRQ 17
+        Region 0: Memory at 4010001000 (64-bit, non-prefetchable) [size=4K]
+        Capabilities: <access denied>
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+
+00:15.2 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #2 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin C routed to IRQ 18
+        Region 0: Memory at 4010002000 (64-bit, non-prefetchable) [size=4K]
+        Capabilities: <access denied>
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+
+00:15.3 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #3 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin D routed to IRQ 19
+        Region 0: Memory at 4010003000 (64-bit, non-prefetchable) [size=4K]
+        Capabilities: <access denied>
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+
+00:16.0 Communication controller: Intel Corporation Management Engine Interface (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0
+        Interrupt: pin A routed to IRQ 129
+        Region 0: Memory at 600112b000 (64-bit, non-prefetchable) [size=4K]
+        Capabilities: <access denied>
+        Kernel driver in use: mei_me
+        Kernel modules: mei_me
+
+00:17.0 SATA controller: Intel Corporation Jasper Lake SATA AHCI Controller (rev 01) (prog-if 01 [AHCI 1.0])
+        DeviceName: Onboard - SATA
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O+ Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+        Status: Cap+ 66MHz+ UDF- FastB2B+ ParErr- DEVSEL=medium >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0
+        Interrupt: pin A routed to IRQ 122
+        Region 0: Memory at 7fe00000 (32-bit, non-prefetchable) [size=8K]
+        Region 1: Memory at 7fe03000 (32-bit, non-prefetchable) [size=256]
+        Region 2: I/O ports at 4090 [size=8]
+        Region 3: I/O ports at 4080 [size=4]
+        Region 4: I/O ports at 4060 [size=32]
+        Region 5: Memory at 7fe02000 (32-bit, non-prefetchable) [size=2K]
+        Capabilities: <access denied>
+        Kernel driver in use: ahci
+
+00:19.0 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #4 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin A routed to IRQ 32
+        Region 0: Memory at 4010004000 (64-bit, non-prefetchable) [size=4K]
+        Capabilities: <access denied>
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+
+00:19.1 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #5 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin B routed to IRQ 33
+        Region 0: Memory at 4010005000 (64-bit, non-prefetchable) [size=4K]
+        Capabilities: <access denied>
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+
+00:1c.0 PCI bridge: Intel Corporation Jasper Lake PCIe Root Port #5 (rev 01) (prog-if 00 [Normal decode])
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O+ Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin A routed to IRQ 120
+        Bus: primary=00, secondary=01, subordinate=01, sec-latency=0
+        I/O behind bridge: f000-0fff [disabled] [16-bit]
+        Memory behind bridge: 7fd00000-7fdfffff [size=1M] [32-bit]
+        Prefetchable memory behind bridge: 00000000fff00000-00000000000fffff [disabled] [64-bit]
+        Secondary status: 66MHz- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- <SERR- <PERR-
+        BridgeCtl: Parity- SERR+ NoISA- VGA- VGA16+ MAbort- >Reset- FastB2B-
+                PriDiscTmr- SecDiscTmr- DiscTmrStat- DiscTmrSERREn-
+        Capabilities: <access denied>
+        Kernel driver in use: pcieport
+
+00:1c.5 PCI bridge: Intel Corporation Device 4dbd (rev 01) (prog-if 00 [Normal decode])
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O+ Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin B routed to IRQ 121
+        Bus: primary=00, secondary=02, subordinate=02, sec-latency=0
+        I/O behind bridge: 3000-3fff [size=4K] [16-bit]
+        Memory behind bridge: 7fc00000-7fcfffff [size=1M] [32-bit]
+        Prefetchable memory behind bridge: 00000000fff00000-00000000000fffff [disabled] [64-bit]
+        Secondary status: 66MHz- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- <SERR- <PERR-
+        BridgeCtl: Parity- SERR+ NoISA- VGA- VGA16+ MAbort- >Reset- FastB2B-
+                PriDiscTmr- SecDiscTmr- DiscTmrStat- DiscTmrSERREn-
+        Capabilities: <access denied>
+        Kernel driver in use: pcieport
+
+00:1e.0 Communication controller: Intel Corporation Jasper Lake Serial IO UART Controller #0 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin A routed to IRQ 20
+        Region 0: Memory at 4010006000 (64-bit, non-prefetchable) [size=4K]
+        Capabilities: <access denied>
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+
+00:1e.3 Serial bus controller: Intel Corporation Jasper Lake Serial IO SPI Controller #1 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin D routed to IRQ 23
+        Region 0: Memory at 4010007000 (64-bit, non-prefetchable) [size=4K]
+        Capabilities: <access denied>
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+
+00:1f.0 ISA bridge: Intel Corporation Jasper Lake eSPI Controller (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O+ Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+        Status: Cap- 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0
+
+00:1f.3 Audio device: Intel Corporation Jasper Lake HD Audio (rev 01)
+        DeviceName: Onboard - Sound
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 32, Cache Line Size: 64 bytes
+        Interrupt: pin A routed to IRQ 16
+        Region 0: Memory at 6001120000 (64-bit, non-prefetchable) [size=16K]
+        Region 4: Memory at 6001000000 (64-bit, non-prefetchable) [size=1M]
+        Capabilities: <access denied>
+        Kernel driver in use: snd_hda_intel
+        Kernel modules: snd_hda_intel, snd_soc_avs, snd_sof_pci_intel_icl
+
+00:1f.4 SMBus: Intel Corporation Jasper Lake SMBus (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O+ Mem+ BusMaster- SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap- 66MHz- UDF- FastB2B+ ParErr- DEVSEL=medium >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Interrupt: pin A routed to IRQ 16
+        Region 0: Memory at 6001126000 (64-bit, non-prefetchable) [size=256]
+        Region 4: I/O ports at efa0 [size=32]
+        Kernel driver in use: i801_smbus
+        Kernel modules: i2c_i801
+
+00:1f.5 Serial bus controller: Intel Corporation Jasper Lake SPI Controller (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Control: I/O- Mem+ BusMaster- SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+        Status: Cap- 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Region 0: Memory at 7fe04000 (32-bit, non-prefetchable) [size=4K]
+        Kernel driver in use: intel-spi
+        Kernel modules: spi_intel_pci
+
+01:00.0 Network controller: Intel Corporation Wireless 3165 (rev 81)
+        Subsystem: Intel Corporation Device 8010
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin A routed to IRQ 131
+        Region 0: Memory at 7fd00000 (64-bit, non-prefetchable) [size=8K]
+        Capabilities: <access denied>
+        Kernel driver in use: iwlwifi
+        Kernel modules: iwlwifi
+
+02:00.0 Ethernet controller: Realtek Semiconductor Co., Ltd. RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller (rev 15)
+        Subsystem: Realtek Semiconductor Co., Ltd. Device 0123
+        Control: I/O+ Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin A routed to IRQ 17
+        Region 0: I/O ports at 3000 [size=256]
+        Region 2: Memory at 7fc04000 (64-bit, non-prefetchable) [size=4K]
+        Region 4: Memory at 7fc00000 (64-bit, non-prefetchable) [size=16K]
+        Capabilities: <access denied>
+        Kernel driver in use: r8169
+        Kernel modules: r8169
+
+
+snaplyze in 🌐 mini-s in ~
+❯ lspci -k
+^[[A00:00.0 Host bridge: Intel Corporation Device 4e24
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+00:02.0 VGA compatible controller: Intel Corporation JasperLake [UHD Graphics] (rev 01)
+        DeviceName: Onboard - Video
+        Subsystem: Intel Corporation Device 2212
+        Kernel driver in use: i915
+        Kernel modules: i915
+00:04.0 Signal processing controller: Intel Corporation Dynamic Tuning service
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel modules: processor_thermal_device_pci_legacy
+00:14.0 USB controller: Intel Corporation Jasper Lake USB 3.1 xHCI Host Controller (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: xhci_hcd
+00:14.2 RAM memory: Intel Corporation Jasper Lake Shared SRAM (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+00:15.0 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #0 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+00:15.1 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #1 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+00:15.2 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #2 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+00:15.3 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #3 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+00:16.0 Communication controller: Intel Corporation Management Engine Interface (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: mei_me
+        Kernel modules: mei_me
+00:17.0 SATA controller: Intel Corporation Jasper Lake SATA AHCI Controller (rev 01)
+        DeviceName: Onboard - SATA
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: ahci
+00:19.0 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #4 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+00:19.1 Serial bus controller: Intel Corporation Jasper Lake Serial IO I2C Host Controller #5 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+00:1c.0 PCI bridge: Intel Corporation Jasper Lake PCIe Root Port #5 (rev 01)
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: pcieport
+00:1c.5 PCI bridge: Intel Corporation Device 4dbd (rev 01)
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: pcieport
+00:1e.0 Communication controller: Intel Corporation Jasper Lake Serial IO UART Controller #0 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+00:1e.3 Serial bus controller: Intel Corporation Jasper Lake Serial IO SPI Controller #1 (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: intel-lpss
+        Kernel modules: intel_lpss_pci
+00:1f.0 ISA bridge: Intel Corporation Jasper Lake eSPI Controller (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+00:1f.3 Audio device: Intel Corporation Jasper Lake HD Audio (rev 01)
+        DeviceName: Onboard - Sound
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: snd_hda_intel
+        Kernel modules: snd_hda_intel, snd_soc_avs, snd_sof_pci_intel_icl
+00:1f.4 SMBus: Intel Corporation Jasper Lake SMBus (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: i801_smbus
+        Kernel modules: i2c_i801
+00:1f.5 Serial bus controller: Intel Corporation Jasper Lake SPI Controller (rev 01)
+        DeviceName: Onboard - Other
+        Subsystem: Intel Corporation Device 7270
+        Kernel driver in use: intel-spi
+        Kernel modules: spi_intel_pci
+01:00.0 Network controller: Intel Corporation Wireless 3165 (rev 81)
+        Subsystem: Intel Corporation Device 8010
+        Kernel driver in use: iwlwifi
+        Kernel modules: iwlwifi
+02:00.0 Ethernet controller: Realtek Semiconductor Co., Ltd. RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller (rev 15)
+        Subsystem: Realtek Semiconductor Co., Ltd. Device 0123
+        Kernel driver in use: r8169
+        Kernel modules: r8169
