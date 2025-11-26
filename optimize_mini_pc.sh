@@ -186,8 +186,9 @@ if $UPDATE_SYSTEM; then
         # Combined list from VPS + specific needs
         safe_install wget curl git htop iotop sysstat net-tools \
             iptables ufw fail2ban unattended-upgrades apt-listchanges \
-            neofetch lm-sensors cpufrequtils speedtest-cli \
+            # neofetch lm-sensors cpufrequtils speedtest-cli \
             zip unzip gnupg ca-certificates lsb-release \
+            lm-sensors cpufrequtils speedtest-cli \
             fzf ripgrep fd-find bat bc needrestart ncdu tree vim nano tmux \
             make gcc g++ cmake xz-utils xdg-user-dirs
             
@@ -197,12 +198,12 @@ if $UPDATE_SYSTEM; then
         
         # Configure iptables-legacy for Docker compatibility (Debian 13 specific)
         # Switch ALL iptables utilities to legacy mode (critical for UFW)
+        # Set master alternatives first
         update-alternatives --set iptables /usr/sbin/iptables-legacy 2>/dev/null || update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 100
         update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy 2>/dev/null || update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 100
-        update-alternatives --set iptables-restore /usr/sbin/iptables-legacy-restore 2>/dev/null || update-alternatives --install /usr/sbin/iptables-restore iptables-restore /usr/sbin/iptables-legacy-restore 100
-        update-alternatives --set ip6tables-restore /usr/sbin/ip6tables-legacy-restore 2>/dev/null || update-alternatives --install /usr/sbin/ip6tables-restore ip6tables-restore /usr/sbin/ip6tables-legacy-restore 100
-        update-alternatives --set iptables-save /usr/sbin/iptables-legacy-save 2>/dev/null || update-alternatives --install /usr/sbin/iptables-save iptables-save /usr/sbin/iptables-legacy-save 100
-        update-alternatives --set ip6tables-save /usr/sbin/ip6tables-legacy-save 2>/dev/null || update-alternatives --install /usr/sbin/ip6tables-save ip6tables-save /usr/sbin/ip6tables-legacy-save 100
+        # Set slave alternatives (iptables-restore and iptables-save are automatically managed)
+        update-alternatives --set iptables-save /usr/sbin/iptables-legacy-save 2>/dev/null || true
+        update-alternatives --set ip6tables-save /usr/sbin/ip6tables-legacy-save 2>/dev/null || true
     fi
 fi
 
@@ -220,7 +221,7 @@ if $CONFIGURE_LOCALES; then
     echo "3) Both (en_US.UTF-8 + ru_RU.UTF-8)"
     
     if check_dialog; then
-        LOCALE_CHOICE=$(dialog --title "Locale Selection" --menu "Select locale:" --radiolist "1" "English (en_US.UTF-8)" "2" "Russian (ru_RU.UTF-8)" "3" "Both (en_US.UTF-8 + ru_RU.UTF-8)" --default "1")
+        LOCALE_CHOICE=$(dialog --title "Locale Selection" --radiolist "Select locale:" 15 60 3 "1" "English (en_US.UTF-8)" on "2" "Russian (ru_RU.UTF-8)" off "3" "Both (en_US.UTF-8 + ru_RU.UTF-8)" off 3>&1 1>&2 2>&3)
     else
         read -p "Enter choice [1-3]: " LOCALE_CHOICE
     fi
