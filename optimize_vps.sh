@@ -1162,9 +1162,16 @@ safe_install "${essential_packages[@]}"
 # Configure iptables-legacy for Debian 13+ (nftables compatibility issue with UFW)
 # Must be done BEFORE installing UFW to ensure proper initialization
 log "Configuring iptables-legacy for UFW and Docker compatibility..."
-update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 100 >/dev/null 2>&1 || warn "Could not set iptables-legacy"
-update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 100 >/dev/null 2>&1 || warn "Could not set ip6tables-legacy"
-log "iptables switched to legacy mode for compatibility"
+
+# Switch ALL iptables utilities to legacy mode (critical for UFW)
+update-alternatives --set iptables /usr/sbin/iptables-legacy 2>/dev/null || update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 100
+update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy 2>/dev/null || update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 100
+update-alternatives --set iptables-restore /usr/sbin/iptables-legacy-restore 2>/dev/null || update-alternatives --install /usr/sbin/iptables-restore iptables-restore /usr/sbin/iptables-legacy-restore 100
+update-alternatives --set ip6tables-restore /usr/sbin/ip6tables-legacy-restore 2>/dev/null || update-alternatives --install /usr/sbin/ip6tables-restore ip6tables-restore /usr/sbin/ip6tables-legacy-restore 100
+update-alternatives --set iptables-save /usr/sbin/iptables-legacy-save 2>/dev/null || update-alternatives --install /usr/sbin/iptables-save iptables-save /usr/sbin/iptables-legacy-save 100
+update-alternatives --set ip6tables-save /usr/sbin/ip6tables-legacy-save 2>/dev/null || update-alternatives --install /usr/sbin/ip6tables-save ip6tables-save /usr/sbin/ip6tables-legacy-save 100
+
+log "iptables switched to legacy mode (all utilities) for compatibility"
 
 log "Essential packages installed"
 
@@ -1368,6 +1375,20 @@ log "Docker and Docker Compose installation complete"
 # 9. Kernel Parameters Optimization (sysctl)
 ################################################################################
 log "Step 11: Optimizing kernel parameters..."
+
+# Ensure /etc/sysctl.conf exists (some minimal Debian installations don't have it)
+if [ ! -f /etc/sysctl.conf ]; then
+    log "Creating /etc/sysctl.conf (was missing)..."
+    cat > /etc/sysctl.conf <<'SYSCTLCONF'
+#
+# /etc/sysctl.conf - Configuration file for setting system variables
+# See /etc/sysctl.d/ for additional system variables.
+# See sysctl.conf (5) for information.
+#
+
+# Additional settings are in /etc/sysctl.d/
+SYSCTLCONF
+fi
 
 # Backup original sysctl.conf
 cp /etc/sysctl.conf /etc/sysctl.conf.backup.$(date +%F) 2>/dev/null || true

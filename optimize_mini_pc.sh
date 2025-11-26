@@ -196,8 +196,13 @@ if $UPDATE_SYSTEM; then
         [ -f /usr/bin/fdfind ] && [ ! -f /usr/bin/fd ] && ln -sf /usr/bin/fdfind /usr/bin/fd 2>/dev/null || true
         
         # Configure iptables-legacy for Docker compatibility (Debian 13 specific)
-        update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 100 >/dev/null 2>&1 || true
-        update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 100 >/dev/null 2>&1 || true
+        # Switch ALL iptables utilities to legacy mode (critical for UFW)
+        update-alternatives --set iptables /usr/sbin/iptables-legacy 2>/dev/null || update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 100
+        update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy 2>/dev/null || update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 100
+        update-alternatives --set iptables-restore /usr/sbin/iptables-legacy-restore 2>/dev/null || update-alternatives --install /usr/sbin/iptables-restore iptables-restore /usr/sbin/iptables-legacy-restore 100
+        update-alternatives --set ip6tables-restore /usr/sbin/ip6tables-legacy-restore 2>/dev/null || update-alternatives --install /usr/sbin/ip6tables-restore ip6tables-restore /usr/sbin/ip6tables-legacy-restore 100
+        update-alternatives --set iptables-save /usr/sbin/iptables-legacy-save 2>/dev/null || update-alternatives --install /usr/sbin/iptables-save iptables-save /usr/sbin/iptables-legacy-save 100
+        update-alternatives --set ip6tables-save /usr/sbin/ip6tables-legacy-save 2>/dev/null || update-alternatives --install /usr/sbin/ip6tables-save ip6tables-save /usr/sbin/ip6tables-legacy-save 100
     fi
 fi
 
@@ -791,15 +796,28 @@ if $PERFORMANCE_TUNING; then
         swapon /swapfile
         echo '/swapfile none swap sw 0 0' >> /etc/fstab
     fi
-    
+
+    # Ensure /etc/sysctl.conf exists
+    if [ ! -f /etc/sysctl.conf ]; then
+        log "Creating /etc/sysctl.conf (was missing)..."
+        cat > /etc/sysctl.conf <<'SYSCTLCONF'
+#
+# /etc/sysctl.conf - Configuration file for setting system variables
+# See /etc/sysctl.d/ for additional system variables.
+#
+
+# Additional settings are in /etc/sysctl.d/
+SYSCTLCONF
+    fi
+
     # Sysctl (VPS optimized + MiniPC specific)
     cat > /etc/sysctl.d/99-minipc.conf <<EOF
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
-vim.swappiness = 10
-vim.vfs_cache_pressure = 50
-vim.dirty_ratio = 15
-vim.dirty_background_ratio = 5
+vm.swappiness = 10
+vm.vfs_cache_pressure = 50
+vm.dirty_ratio = 15
+vm.dirty_background_ratio = 5
 fs.inotify.max_user_watches = 524288
 net.core.rmem_max = 16777216
 net.core.wmem_max = 16777216
