@@ -1091,12 +1091,12 @@ log "Total RAM: ${TOTAL_RAM_GB}GB"
 # Calculate swap size based on RAM (force English locale for bc)
 if (( $(LC_NUMERIC=C echo "$TOTAL_RAM_GB < 3" | bc -l) )); then
     # Less than 3GB: swap = 2 * RAM
-    SWAP_SIZE=$(LC_NUMERIC=C awk "BEGIN {print int($TOTAL_RAM_GB * 2)}")
+    SWAP_SIZE=$(LC_NUMERIC=C awk "BEGIN {printf \"%.0f\", $TOTAL_RAM_GB * 2 + 0.5}")
     SWAPPINESS=60
     log "RAM < 3GB: Creating ${SWAP_SIZE}GB swap (2x RAM)"
 else
-    # 3GB or more: swap = RAM / 2
-    SWAP_SIZE=$(LC_NUMERIC=C awk "BEGIN {print int($TOTAL_RAM_GB / 2)}")
+    # 3GB or more: swap = RAM / 2 (rounded up for better performance)
+    SWAP_SIZE=$(LC_NUMERIC=C awk "BEGIN {printf \"%.0f\", ($TOTAL_RAM_GB / 2) + 0.5}")
     SWAPPINESS=10
     log "RAM >= 3GB: Creating ${SWAP_SIZE}GB swap (0.5x RAM)"
 fi

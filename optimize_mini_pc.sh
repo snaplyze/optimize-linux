@@ -783,10 +783,11 @@ if $PERFORMANCE_TUNING; then
     
     # RAM Detection
     TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-    TOTAL_RAM_GB=$(echo "$TOTAL_RAM_KB / 1024 / 1024" | bc)
-    
-    # Swap (50% RAM rule)
-    SWAP_SIZE=$(( TOTAL_RAM_GB / 2 ))
+    # Use awk for accurate calculation with rounding
+    TOTAL_RAM_GB=$(LC_NUMERIC=C awk "BEGIN {printf \"%.2f\", $TOTAL_RAM_KB/1024/1024}")
+
+    # Swap (50% RAM rule) - rounded to nearest integer for better sizing
+    SWAP_SIZE=$(LC_NUMERIC=C awk "BEGIN {printf \"%.0f\", ($TOTAL_RAM_GB / 2) + 0.5}")
     [ $SWAP_SIZE -lt 1 ] && SWAP_SIZE=2
     
     if ! grep -q "/swapfile" /etc/fstab; then
