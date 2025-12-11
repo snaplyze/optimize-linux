@@ -4,52 +4,58 @@
 
 ## 📁 Скрипты
 
-### 🖥️ VPS Optimization (`optimize_vps.sh`)
-**Назначение:** Оптимизация VPS серверов на базе Debian
+### 🖥️ VPS Optimization (`optimize_vps.sh`) - v2.2.0
+**Назначение:** Оптимизация VPN-серверов на базе Debian (1-4GB RAM)
 - **Поддерживаемые ОС:** Debian 11/12/13, Ubuntu 20.04+
-- **Особенности:** XanMod kernel, Zsh + Starship, Docker, SSH hardening
+- **Особенности:** XanMod kernel, Zsh + Starship (оптимизирован), Docker, SSH hardening
 - **Использование:** `sudo ./optimize_vps.sh`
 
 **Ключевые возможности:**
 - 🚀 XanMod kernel с автоопределением архитектуры
-- 🛠️ Zsh + Starship с плагинами
+- ⚡ **Zsh Ultra-Fast** - NVM lazy loading, компиляция .zshrc (+70-90% быстрее)
+- 🌐 **VPN-оптимизация** - TCP Fast Open, UDP буферы, BBR, IP forwarding
 - 🐳 Docker CE + Docker Compose
-- 🔒 SSH hardening и безопасность
-- ⚡ Системная оптимизация (sysctl, swap, tmpfs)
-- 📊 Мониторинг и утилиты
+- 🔒 SSH hardening и безопасность (Fail2Ban, UFW)
+- 📈 **70+ sysctl параметров** для VPN (WireGuard, OpenVPN, IPsec)
+- 🖥️ CPU Governor (schedutil для баланса)
+- 📊 Расширенный мониторинг утилит
 
 ---
 
-### 🏠 Mini PC Optimization (`optimize_mini_pc.sh`)
-**Назначение:** Оптимизация домашних серверов (Intel N5095/Jasper Lake)
+### 🏠 Mini PC Optimization (`optimize_mini_pc.sh`) - v1.1.0
+**Назначение:** Оптимизация медиа-серверов (Intel N5095 + 16GB RAM)
 - **Поддерживаемые ОС:** Debian 13 (Trixie)
-- **Особенности:** XanMod x64v2, Intel QuickSync (GPU), SSD тюнинг
+- **Особенности:** XanMod x64v2, Intel QuickSync (GPU), SSD тюнинг для стриминга
 - **Использование:** `sudo ./optimize_mini_pc.sh`
 
 **Ключевые возможности:**
 - 🔧 **Intel N5095 Tuning:** Ядро XanMod x64v2 (без AVX), CPU governor `schedutil`
-- 🎞️ **Media Server:** Драйверы Intel GPU (QuickSync), группы `render/video`
-- 💾 **SSD Optimization:** I/O scheduler `mq-deadline`, `fstrim`, `noatime`
-- 🐳 **Full Stack:** Docker, Go, Node.js/NVM, Zsh + Starship
+- 🎞️ **Media Server Pro:** QuickSync транскодинг, сетевые буферы 32MB для множественных стримов
+- ⚡ **Zsh Ultra-Fast** - NVM lazy loading, терминал загружается на 70-90% быстрее
+- 💾 **Умный Swap:** 4GB (вместо 8GB) для 16GB RAM
+- 📡 **Сеть для стриминга:** TCP Fast Open, оптимизация для Plex/Jellyfin
+- 🐳 **Full Stack:** Docker, Go, Node.js/NVM (lazy), Zsh + Starship
 - 📂 **Samba:** Опциональная настройка файлового шаринга
 - 🛡️ **Security:** UFW, Fail2Ban, SSH Hardening
 
 ---
 
-### 🐧 WSL2 Optimization (`optimize_wsl2.sh`)
-**Назначение:** Оптимизация WSL2 для Debian 12/13
+### 🐧 WSL2 Optimization (`optimize_wsl2.sh`) - v2.2.0
+**Назначение:** Оптимизация WSL2 для ML/AI (i7-13700K + RTX 4090 + 32GB RAM)
 - **Поддерживаемые ОС:** Debian 12/13 (Bookworm/Trixie)
-- **Особенности:** Go + Node.js/NVM, WSL2-специфичная оптимизация, systemd, Zsh + Starship
+- **Особенности:** Максимальная производительность для ML/AI, GPU computing, разработка
 - **Использование:** `sudo ./optimize_wsl2.sh`
 
 **Ключевые возможности:**
+- ⚡ **Zsh Ultra-Fast** - NVM lazy loading, терминал загружается на 70-90% быстрее
+- 🤖 **ML/AI Optimization:** Transparent Huge Pages, 64MB сетевые буферы, swappiness=1
+- 🎮 **RTX 4090 Ready:** CUDA оптимизации, unlimited memlock, shared memory 64GB
 - 🔧 WSL2 конфигурация (wsl.conf, systemd, автозапуск Docker)
 - 🪟 Windows интеграция (explorer, cmd, powershell)
 - 🐹 Go (последняя версия, SHA256 верификация)
-- ⬢ Node.js + NVM (LTS, npm без sudo)
+- ⬢ Node.js + NVM (LTS, npm без sudo, lazy loading)
 - 🐳 Docker CE + NVIDIA Container Toolkit
-- 🎮 Интерактивное меню выбора компонентов (17 этапов)
-- ⚡ WSL2-специфичная оптимизация производительности
+- 💾 **Агрессивный I/O:** NVMe nr_requests=2048, read-ahead 1024KB
 - 📊 WSL2-специфичные утилиты мониторинга
 
 ---

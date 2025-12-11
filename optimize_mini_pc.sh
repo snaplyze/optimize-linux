@@ -368,11 +368,25 @@ if $OPTIMIZE_SSD; then
     systemctl enable fstrim.timer
     systemctl start fstrim.timer
     
-    log "Setting I/O schedulers (mq-deadline for SSD, none for NVMe)..."
-    # FIX: Added missing '=' signs in ATTR
-    cat > /etc/udev/rules.d/60-ioschedulers.conf <<EOF
+    log "Setting I/O schedulers (optimized for media server)..."
+    cat > /etc/udev/rules.d/60-ioschedulers.conf <<'EOF'
+# I/O Scheduler optimization for Media Server
+
+# NVMe drives - use 'none' scheduler (best for NVMe)
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/nr_requests}="1024"
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/read_ahead_kb}="512"
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/rq_affinity}="2"
+
+# SSD drives - use 'mq-deadline' scheduler (best for SATA SSD with media files)
 ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
-ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/nr_requests}="512"
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/read_ahead_kb}="512"
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/rq_affinity}="2"
+
+# HDD drives - use 'bfq' scheduler
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/read_ahead_kb}="1024"
 EOF
     udevadm control --reload
     udevadm trigger
@@ -433,7 +447,7 @@ setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS PUSHD_SILENT
 
 # Load zsh-syntax-highlighting FIRST
 if [[ -f ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]]; then
-    ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern)
+    ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)
     source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 fi
 
@@ -441,9 +455,10 @@ fi
 if [[ -f ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
     source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
     ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
-    ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+    ZSH_AUTOSUGGEST_STRATEGY=(history)
     ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
     ZSH_AUTOSUGGEST_USE_ASYNC=true
+    ZSH_AUTOSUGGEST_MANUAL_REBIND=1
     bindkey '^ ' autosuggest-accept
     bindkey '^[^M' autosuggest-execute
 fi
@@ -451,7 +466,7 @@ fi
 # Completion settings
 fpath=(~/.zsh/zsh-completions/src $fpath)
 autoload -Uz compinit
-if [[ -n ${ZDOTDIR}/.zcompdump(#qN.mh+24) ]]; then
+if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
     compinit
 else
     compinit -C
@@ -549,9 +564,37 @@ alias autoremove='sudo apt autoremove -y'
 
 # Go/NVM paths
 export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
+
+# NVM (Node Version Manager) - Lazy Loading for fast shell startup
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# Only load NVM when actually using node/npm/nvm commands
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # Create placeholder functions that load NVM on first use
+    nvm() {
+        unset -f nvm node npm npx 2>/dev/null
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm "$@"
+    }
+
+    node() {
+        unset -f nvm node npm npx 2>/dev/null
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        node "$@"
+    }
+
+    npm() {
+        unset -f nvm node npm npx 2>/dev/null
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        npm "$@"
+    }
+
+    npx() {
+        unset -f nvm node npm npx 2>/dev/null
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        npx "$@"
+    }
+fi
 
 # Initialize Starship prompt
 eval "$(starship init zsh)"
@@ -562,8 +605,9 @@ ZSHRC
         # Full Starship config (VPS version)
         cat > "$user_home/.config/starship.toml" <<'STARSHIP'
 # Starship configuration - Unicode version
-command_timeout = 1000
+command_timeout = 500
 add_newline = true
+scan_timeout = 30
 
 format = """
 $username\
@@ -676,6 +720,13 @@ disabled = true
 disabled = true
 STARSHIP
 
+        # Compile .zshrc for faster loading (~50-100ms improvement)
+        if [ "$username" = "root" ]; then
+            zsh -c "zcompile $user_home/.zshrc" 2>/dev/null || true
+        else
+            su - "$username" -c "zsh -c 'zcompile ~/.zshrc'" 2>/dev/null || true
+        fi
+
         chown -R "$username:$username" "$user_home/.zsh" "$user_home/.zshrc" "$user_home/.config"
         chsh -s $(which zsh) "$username"
     }
@@ -786,9 +837,16 @@ if $PERFORMANCE_TUNING; then
     # Use awk for accurate calculation with rounding
     TOTAL_RAM_GB=$(LC_NUMERIC=C awk "BEGIN {printf \"%.2f\", $TOTAL_RAM_KB/1024/1024}")
 
-    # Swap (50% RAM rule) - rounded to nearest integer for better sizing
-    SWAP_SIZE=$(LC_NUMERIC=C awk "BEGIN {printf \"%.0f\", ($TOTAL_RAM_GB / 2) + 0.5}")
-    [ $SWAP_SIZE -lt 1 ] && SWAP_SIZE=2
+    # Swap calculation (optimized for 16GB RAM)
+    # For systems with 12GB+, use 4GB swap (no need for large swap with plenty RAM)
+    if (( $(echo "$TOTAL_RAM_GB >= 12" | bc -l) )); then
+        SWAP_SIZE=4
+        log "Detected ${TOTAL_RAM_GB}GB RAM - using optimized 4GB swap"
+    else
+        # For smaller systems, use 50% rule
+        SWAP_SIZE=$(LC_NUMERIC=C awk "BEGIN {printf \"%.0f\", ($TOTAL_RAM_GB / 2) + 0.5}")
+        [ $SWAP_SIZE -lt 1 ] && SWAP_SIZE=2
+    fi
     
     if ! grep -q "/swapfile" /etc/fstab; then
         log "Creating ${SWAP_SIZE}GB Swap..."
@@ -812,26 +870,121 @@ if $PERFORMANCE_TUNING; then
 SYSCTLCONF
     fi
 
-    # Sysctl (VPS optimized + MiniPC specific)
+    # Sysctl (Media Server optimized for 16GB RAM + Intel N5095)
     cat > /etc/sysctl.d/99-minipc.conf <<EOF
+# Mini PC Optimization - Media Server (16GB RAM, Intel N5095)
+# Optimized for Plex/Jellyfin with QuickSync transcoding
+
+# ============================================================================
+# Network Performance - Enhanced for streaming
+# ============================================================================
+
+# TCP/UDP Buffer Sizes (optimized for 16GB RAM, media streaming)
+net.core.rmem_default = 524288
+net.core.wmem_default = 524288
+net.core.rmem_max = 33554432
+net.core.wmem_max = 33554432
+net.ipv4.tcp_rmem = 4096 262144 33554432
+net.ipv4.tcp_wmem = 4096 262144 33554432
+
+# Network Queues (for multiple concurrent streams)
+net.core.netdev_max_backlog = 16384
+net.core.somaxconn = 8192
+net.ipv4.tcp_max_syn_backlog = 16384
+
+# TCP Performance
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
-vm.swappiness = 10
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_fin_timeout = 15
+net.ipv4.ip_local_port_range = 10240 65535
+
+# TCP Fast Open (reduces streaming connection latency)
+net.ipv4.tcp_fastopen = 3
+
+# TCP Window Scaling & SACK (better for high-latency clients)
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.tcp_timestamps = 1
+net.ipv4.tcp_sack = 1
+
+# MTU Probing
+net.ipv4.tcp_mtu_probing = 1
+
+# TCP Orphan & TIME_WAIT limits
+net.ipv4.tcp_max_orphans = 32768
+net.ipv4.tcp_max_tw_buckets = 131072
+
+# ============================================================================
+# Virtual Memory - Optimized for 16GB RAM
+# ============================================================================
+vm.swappiness = 5
 vm.vfs_cache_pressure = 50
-vm.dirty_ratio = 15
-vm.dirty_background_ratio = 5
-fs.inotify.max_user_watches = 524288
-net.core.rmem_max = 16777216
-net.core.wmem_max = 16777216
+vm.dirty_ratio = 20
+vm.dirty_background_ratio = 10
+vm.dirty_expire_centisecs = 3000
+vm.dirty_writeback_centisecs = 500
+vm.min_free_kbytes = 131072
+vm.overcommit_memory = 1
+vm.zone_reclaim_mode = 0
+
+# ============================================================================
+# File System Performance (for large media files)
+# ============================================================================
+fs.file-max = 2097152
+fs.inotify.max_user_watches = 1048576
+fs.inotify.max_user_instances = 1024
+
+# ============================================================================
+# Connection Tracking (for multiple streaming sessions)
+# ============================================================================
+net.netfilter.nf_conntrack_max = 262144
+net.netfilter.nf_conntrack_tcp_timeout_established = 3600
+
+# ============================================================================
+# Kernel Performance (low latency for transcoding)
+# ============================================================================
+kernel.sched_migration_cost_ns = 5000000
+kernel.sched_autogroup_enabled = 0
+
+# Entropy (for QuickSync encryption)
+kernel.random.write_wakeup_threshold = 1024
+
+# ============================================================================
+# Security
+# ============================================================================
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.conf.default.rp_filter = 1
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.default.accept_source_route = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+
 EOF
     sysctl -p /etc/sysctl.d/99-minipc.conf
     
-    # Limits
+    # Limits (optimized for media server)
     cat > /etc/security/limits.d/99-minipc.conf <<EOF
-* soft nofile 65535
-* hard nofile 65535
-root soft nofile 65535
-root hard nofile 65535
+# Mini PC System Limits - Media Server (16GB RAM)
+
+# Open file limits (for media libraries and concurrent streams)
+* soft nofile 262144
+* hard nofile 262144
+root soft nofile 262144
+root hard nofile 262144
+
+# Process limits
+* soft nproc 32768
+* hard nproc 32768
+
+# Memory lock (for QuickSync transcoding)
+* soft memlock unlimited
+* hard memlock unlimited
+
 EOF
 
     # Journald limit

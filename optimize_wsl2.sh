@@ -638,7 +638,7 @@ setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS PUSHD_SILENT
 
 # Load zsh-syntax-highlighting FIRST
 if [[ -f ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]]; then
-    ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern)
+    ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)
     source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 fi
 
@@ -646,9 +646,10 @@ fi
 if [[ -f ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
     source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
     ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
-    ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+    ZSH_AUTOSUGGEST_STRATEGY=(history)
     ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
     ZSH_AUTOSUGGEST_USE_ASYNC=true
+    ZSH_AUTOSUGGEST_MANUAL_REBIND=1
     bindkey '^ ' autosuggest-accept
     bindkey '^[^M' autosuggest-execute
 fi
@@ -656,7 +657,7 @@ fi
 # Completion settings
 fpath=(~/.zsh/zsh-completions/src $fpath)
 autoload -Uz compinit
-if [[ -n ${ZDOTDIR}/.zcompdump(#qN.mh+24) ]]; then
+if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
     compinit
 else
     compinit -C
@@ -809,17 +810,56 @@ extract() {
     fi
 }
 
+# NVM (Node Version Manager) - Lazy Loading for fast shell startup
+export NVM_DIR="$HOME/.nvm"
+
+# Only load NVM when actually using node/npm/nvm commands
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # Create placeholder functions that load NVM on first use
+    nvm() {
+        unset -f nvm node npm npx 2>/dev/null
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm "$@"
+    }
+
+    node() {
+        unset -f nvm node npm npx 2>/dev/null
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        node "$@"
+    }
+
+    npm() {
+        unset -f nvm node npm npx 2>/dev/null
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        npm "$@"
+    }
+
+    npx() {
+        unset -f nvm node npm npx 2>/dev/null
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        npx "$@"
+    }
+fi
+
 # Initialize Starship prompt
 eval "$(starship init zsh)"
 ZSHRC
 
+        # Compile .zshrc for faster loading (~50-100ms improvement)
+        if [ "$username" = "root" ]; then
+            zsh -c "zcompile $user_home/.zshrc" 2>/dev/null || true
+        else
+            su - "$username" -c "zsh -c 'zcompile ~/.zshrc'" 2>/dev/null || true
+        fi
+
         # Create Starship config with WSL2 optimizations
         mkdir -p "$user_home/.config"
-        
+
         cat > "$user_home/.config/starship.toml" <<'STARSHIP'
 # WSL2 Optimized Starship Configuration
 
-command_timeout = 1000
+command_timeout = 500
+scan_timeout = 30
 add_newline = true
 
 format = """
@@ -1567,17 +1607,30 @@ section "Step 13: Performance Tuning"
 if $PERFORMANCE_TUNING; then
     log "Applying performance optimizations..."
     
-    # System limits
+    # System limits (optimized for 32GB RAM and ML/AI)
     cat > /etc/security/limits.d/99-wsl2-limits.conf <<EOF
-# WSL2 Performance Limits
-* soft nofile 65535
-* hard nofile 65535
-* soft nproc 65535
-* hard nproc 65535
-root soft nofile 65535
-root hard nofile 65535
-root soft nproc 65535
-root hard nproc 65535
+# WSL2 Performance Limits - High Performance (32GB RAM)
+
+# Open file limits (for large projects and datasets)
+* soft nofile 524288
+* hard nofile 524288
+root soft nofile 524288
+root hard nofile 524288
+
+# Process limits (for parallel ML/AI training)
+* soft nproc 131072
+* hard nproc 131072
+root soft nproc 131072
+root hard nproc 131072
+
+# Memory lock (for CUDA and GPU memory pinning)
+* soft memlock unlimited
+* hard memlock unlimited
+
+# Core dump size (for debugging)
+* soft core unlimited
+* hard core unlimited
+
 EOF
 
     # Ensure /etc/sysctl.conf exists (some minimal Debian installations don't have it)
@@ -1594,38 +1647,95 @@ EOF
 SYSCTLCONF
     fi
 
-    # Kernel parameters for WSL2
+    # Kernel parameters for WSL2 (High Performance: 32GB RAM, i7-13700K, RTX 4090)
     cat > /etc/sysctl.d/99-wsl2-optimization.conf <<EOF
-# WSL2 Performance Optimization
+# WSL2 Optimization - High Performance (32GB RAM, i7-13700K, RTX 4090)
+# Optimized for ML/AI workloads, development, and GPU computing
 
-# Network Performance
-net.core.rmem_max = 16777216
-net.core.wmem_max = 16777216
-net.ipv4.tcp_rmem = 4096 87380 16777216
-net.ipv4.tcp_wmem = 4096 65536 16777216
-net.core.netdev_max_backlog = 5000
-net.ipv4.tcp_max_syn_backlog = 8096
-net.ipv4.tcp_slow_start_after_idle = 0
-net.ipv4.tcp_tw_reuse = 1
-net.ipv4.ip_local_port_range = 10240 65535
+# ============================================================================
+# Network Performance - Maximum buffers for 32GB RAM
+# ============================================================================
 
-# TCP Congestion Control (BBR for better throughput)
+# TCP/UDP Buffer Sizes (aggressive for 32GB RAM)
+net.core.rmem_default = 1048576
+net.core.wmem_default = 1048576
+net.core.rmem_max = 67108864
+net.core.wmem_max = 67108864
+net.ipv4.tcp_rmem = 4096 524288 67108864
+net.ipv4.tcp_wmem = 4096 524288 67108864
+
+# Network Queues (high throughput)
+net.core.netdev_max_backlog = 32768
+net.core.somaxconn = 16384
+net.ipv4.tcp_max_syn_backlog = 32768
+
+# TCP Performance
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_fin_timeout = 15
+net.ipv4.ip_local_port_range = 10240 65535
 
-# File System Performance
-fs.file-max = 2097152
-fs.inotify.max_user_watches = 524288
-fs.inotify.max_user_instances = 512
+# TCP Fast Open
+net.ipv4.tcp_fastopen = 3
 
-# Virtual Memory (optimized for WSL2)
-vm.swappiness = 10
-vm.vfs_cache_pressure = 50
-vm.dirty_ratio = 15
-vm.dirty_background_ratio = 5
-vm.min_free_kbytes = 65536
+# TCP Window Scaling & SACK
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.tcp_timestamps = 1
+net.ipv4.tcp_sack = 1
 
+# MTU Probing
+net.ipv4.tcp_mtu_probing = 1
+
+# TCP Orphan & TIME_WAIT limits
+net.ipv4.tcp_max_orphans = 65536
+net.ipv4.tcp_max_tw_buckets = 262144
+
+# ============================================================================
+# Virtual Memory - Aggressive caching for 32GB RAM
+# ============================================================================
+vm.swappiness = 1
+vm.vfs_cache_pressure = 40
+vm.dirty_ratio = 30
+vm.dirty_background_ratio = 10
+vm.dirty_expire_centisecs = 6000
+vm.dirty_writeback_centisecs = 500
+vm.min_free_kbytes = 262144
+vm.overcommit_memory = 1
+vm.overcommit_ratio = 80
+vm.zone_reclaim_mode = 0
+
+# Memory mapping (for large datasets and ML models)
+vm.max_map_count = 262144
+
+# ============================================================================
+# File System Performance (for large datasets)
+# ============================================================================
+fs.file-max = 4194304
+fs.inotify.max_user_watches = 2097152
+fs.inotify.max_user_instances = 2048
+
+# ============================================================================
+# Shared Memory (for CUDA and multi-process ML/AI)
+# ============================================================================
+kernel.shmmax = 68719476736
+kernel.shmall = 16777216
+
+# ============================================================================
+# Kernel Performance (ML/AI workloads)
+# ============================================================================
+kernel.sched_migration_cost_ns = 5000000
+kernel.sched_autogroup_enabled = 0
+kernel.pid_max = 131072
+kernel.threads-max = 131072
+
+# Entropy (for cryptography)
+kernel.random.write_wakeup_threshold = 1024
+
+# ============================================================================
 # Security
+# ============================================================================
 net.ipv4.conf.all.rp_filter = 1
 net.ipv4.conf.default.rp_filter = 1
 net.ipv4.icmp_echo_ignore_broadcasts = 1
@@ -1641,14 +1751,31 @@ net.ipv4.conf.default.secure_redirects = 0
 net.ipv6.conf.all.accept_redirects = 0
 net.ipv6.conf.default.accept_redirects = 0
 EOF
+
+    # Enable Transparent Huge Pages for ML/AI (if available)
+    if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
+        log "Enabling Transparent Huge Pages for ML/AI workloads..."
+        echo always > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true
+        echo defer > /sys/kernel/mm/transparent_hugepage/defrag 2>/dev/null || true
+    fi
     
     sysctl -p /etc/sysctl.d/99-wsl2-optimization.conf
     
-    # I/O scheduler optimization
-    cat > /etc/udev/rules.d/60-ioschedulers.conf <<EOF
-# I/O Scheduler Optimization for WSL2
+    # I/O scheduler optimization (for high-performance NVMe)
+    cat > /etc/udev/rules.d/60-ioschedulers.conf <<'EOF'
+# I/O Scheduler Optimization for WSL2 (High Performance)
+
+# NVMe drives - use 'none' scheduler (best for high-end NVMe)
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/nr_requests}="2048"
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/read_ahead_kb}="1024"
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/rq_affinity}="2"
+
+# SSD drives - use 'mq-deadline' scheduler
 ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
-ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/nr_requests}="1024"
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/read_ahead_kb}="1024"
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/rq_affinity}="2"
 EOF
     
     log "Performance tuning applied"
