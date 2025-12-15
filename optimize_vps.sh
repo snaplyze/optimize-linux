@@ -1565,6 +1565,7 @@ kernel.pid_max = 65536
 kernel.threads-max = 65536
 
 # Scheduler optimization (low latency for VPN)
+# Note: sched_migration_cost_ns may not be available in virtualized environments
 kernel.sched_migration_cost_ns = 5000000
 kernel.sched_autogroup_enabled = 0
 
@@ -1573,7 +1574,10 @@ kernel.random.write_wakeup_threshold = 1024
 
 EOF
 
-sysctl -p /etc/sysctl.d/99-vps-optimization.conf
+# Apply sysctl settings with error tolerance for missing parameters
+# Some parameters may not exist in virtualized environments (WSL2, containers, etc.)
+sysctl -e -p /etc/sysctl.d/99-vps-optimization.conf 2>&1 | grep -v "cannot stat" | grep -v "No such file or directory" || true
+log "Kernel parameters applied (some may be skipped in virtualized environments)"
 
 ################################################################################
 # 10. Swap Optimization

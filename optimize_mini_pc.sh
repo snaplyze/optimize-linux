@@ -965,8 +965,11 @@ net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
 
 EOF
-    sysctl -p /etc/sysctl.d/99-minipc.conf
-    
+
+    # Apply sysctl settings with error tolerance for missing parameters
+    sysctl -e -p /etc/sysctl.d/99-minipc.conf 2>&1 | grep -v "cannot stat" | grep -v "No such file or directory" || true
+    log "Kernel parameters applied (some may be skipped if not supported by hardware)"
+
     # Limits (optimized for media server)
     cat > /etc/security/limits.d/99-minipc.conf <<EOF
 # Mini PC System Limits - Media Server (16GB RAM)

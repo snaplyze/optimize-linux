@@ -1758,9 +1758,12 @@ EOF
         echo always > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true
         echo defer > /sys/kernel/mm/transparent_hugepage/defrag 2>/dev/null || true
     fi
-    
-    sysctl -p /etc/sysctl.d/99-wsl2-optimization.conf
-    
+
+    # Apply sysctl settings with error tolerance for missing parameters
+    # Some parameters may not exist in WSL2 environment
+    sysctl -e -p /etc/sysctl.d/99-wsl2-optimization.conf 2>&1 | grep -v "cannot stat" | grep -v "No such file or directory" || true
+    log "Kernel parameters applied (some may be skipped in WSL2 environment)"
+
     # I/O scheduler optimization (for high-performance NVMe)
     cat > /etc/udev/rules.d/60-ioschedulers.conf <<'EOF'
 # I/O Scheduler Optimization for WSL2 (High Performance)
