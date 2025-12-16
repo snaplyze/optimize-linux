@@ -999,20 +999,26 @@ STARSHIP
         chsh -s "$zsh_path" "$username"
         log "Default shell changed to Zsh for $username"
     }
-    
+
+    # Ensure zsh is available before setup
+    if ! command -v zsh &> /dev/null; then
+        error "Zsh installation failed - zsh binary not found!"
+        exit 1
+    fi
+
     # Setup Zsh for root
     setup_zsh_for_user root
-    
+
     # Setup Zsh for new user if created
     if [ -n "$NEW_USER" ]; then
         setup_zsh_for_user $NEW_USER
     fi
-    
+
     # Setup Zsh for docker user
     if [ -n "$DOCKER_USER" ] && [ "$DOCKER_USER" != "root" ] && [ "$DOCKER_USER" != "$NEW_USER" ]; then
         setup_zsh_for_user $DOCKER_USER
     fi
-    
+
     log "Zsh + Starship configuration completed"
 else
     log "Skipping Zsh installation"

@@ -833,17 +833,17 @@ STARSHIP
     log "Default shell changed to Zsh for $username"
 }
 
+# Ensure zsh is available before setup
+if ! command -v zsh &> /dev/null; then
+    error "Zsh installation failed - zsh binary not found!"
+    exit 1
+fi
+
 # Setup Zsh for root
 setup_zsh_for_user root
 
 # Setup Zsh for new user
 setup_zsh_for_user $NEW_USER
-
-# Ensure zsh is available
-if ! command -v zsh &> /dev/null; then
-    error "Zsh installation failed!"
-    exit 1
-fi
 
 # Ensure starship is available
 if ! command -v starship &> /dev/null; then

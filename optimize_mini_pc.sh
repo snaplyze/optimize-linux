@@ -729,8 +729,19 @@ STARSHIP
         fi
 
         chown -R "$username:$username" "$user_home/.zsh" "$user_home/.zshrc" "$user_home/.config"
-        chsh -s $(which zsh) "$username"
+        local zsh_path=$(which zsh)
+        if [ -z "$zsh_path" ]; then
+            error "Cannot find zsh binary"
+            return 1
+        fi
+        chsh -s "$zsh_path" "$username"
     }
+
+    # Ensure zsh is available before setup
+    if ! command -v zsh &> /dev/null; then
+        error "Zsh installation failed - zsh binary not found!"
+        exit 1
+    fi
 
     setup_zsh_for_user root
     [ -n "$NEW_USER" ] && [ "$NEW_USER" != "root" ] && setup_zsh_for_user "$NEW_USER"
