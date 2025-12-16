@@ -812,7 +812,13 @@ if $INSTALL_DOCKER; then
       
     apt-get update
     safe_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    
+
+    # Check if Docker was actually installed
+    if ! command -v docker &>/dev/null; then
+        error "Docker installation failed - docker binary not found!"
+        exit 1
+    fi
+
     mkdir -p /etc/docker
     cat > /etc/docker/daemon.json <<EOF
 {

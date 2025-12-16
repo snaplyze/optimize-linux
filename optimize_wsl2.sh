@@ -1356,7 +1356,13 @@ if $INSTALL_DOCKER; then
     )
     
     safe_install "${docker_packages[@]}"
-    
+
+    # Check if Docker was actually installed
+    if ! command -v docker &>/dev/null; then
+        error "Docker installation failed - docker binary not found!"
+        exit 1
+    fi
+
     # Configure Docker daemon for WSL2
     cat > /etc/docker/daemon.json <<EOF
 {
