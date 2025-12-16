@@ -56,7 +56,8 @@ fi
 
 # Check if package is available in repositories
 package_available() {
-    apt-cache show "$1" >/dev/null 2>&1
+    LC_ALL=C apt-cache policy "$1" 2>/dev/null | grep -q "Candidate:" && \
+    ! LC_ALL=C apt-cache policy "$1" 2>/dev/null | grep -q "Candidate: (none)"
 }
 
 # Safe package installation with availability check
