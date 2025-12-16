@@ -1022,9 +1022,9 @@ if $DISABLE_SERVICES; then
     section "Step 10: Disable Unused Services"
     SERVICES_TO_DISABLE=("bluetooth.service" "cups.service" "avahi-daemon.service")
     for service in "${SERVICES_TO_DISABLE[@]}"; do
-        if systemctl is-enabled "$service" 2>/dev/null; then
-            systemctl disable "$service"
-            systemctl stop "$service"
+        if systemctl is-enabled "$service" &>/dev/null; then
+            systemctl disable "$service" &>/dev/null || true
+            systemctl stop "$service" &>/dev/null || true
             log "Disabled $service"
         fi
     done
