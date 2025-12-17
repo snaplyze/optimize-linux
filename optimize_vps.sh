@@ -688,8 +688,8 @@ ZSHRC
     mkdir -p "$user_home/.config"
     
     cat > "$user_home/.config/starship.toml" <<'STARSHIP'
-# Starship configuration - Unicode version
-# Beautiful icons that work everywhere without special fonts
+# Starship configuration - Modern & Clean
+# Optimized for VPS environments
 
 command_timeout = 500
 add_newline = true
@@ -700,6 +700,7 @@ $username\
 $hostname\
 $directory\
 $git_branch\
+$git_commit\
 $git_status\
 $docker_context\
 $python\
@@ -707,6 +708,9 @@ $nodejs\
 $golang\
 $rust\
 $java\
+$terraform\
+$aws\
+$kubernetes\
 $line_break\
 $character"""
 
@@ -728,36 +732,45 @@ trim_at = '.'
 [directory]
 truncation_length = 3
 truncate_to_repo = true
-style = 'blue bold'
+style = 'cyan bold'
 read_only = " 🔒"
 format = 'in [$path]($style)[$read_only]($read_only_style) '
 
 [character]
-success_symbol = '[➜](bold green)'
-error_symbol = '[✗](bold red)'
+success_symbol = '[❯](bold green)'
+error_symbol = '[❯](bold red)'
 
 [git_branch]
 symbol = "🌱 "
 format = 'on [$symbol$branch]($style) '
 style = 'purple bold'
 
+[git_commit]
+commit_hash_length = 7
+format = '[\($hash$tag\)]($style) '
+style = 'green bold'
+only_detached = true
+tag_disabled = false
+tag_symbol = ' 🏷 '
+
 [git_status]
 format = '([\[$all_status$ahead_behind\]]($style) )'
 style = 'red bold'
-conflicted = '='
+conflicted = '🏳'
 ahead = '⇡${count}'
 behind = '⇣${count}'
-diverged = '⇕${ahead_count}⇣${behind_count}'
+diverged = '⇕⇡${ahead_count}⇣${behind_count}'
+up_to_date = '✓'
 untracked = '?${count}'
-stashed = '\$${count}'
+stashed = '📦'
 modified = '!${count}'
 staged = '+${count}'
 renamed = '»${count}'
-deleted = 'x${count}'
+deleted = '✘${count}'
 
 [cmd_duration]
 min_time = 500
-format = 'took [$duration](bold yellow)'
+format = 'took [$duration](bold yellow) '
 show_milliseconds = false
 
 [time]
@@ -795,6 +808,22 @@ style = 'red bold'
 symbol = "☕ "
 format = 'via [$symbol$version]($style) '
 style = 'red bold'
+
+[terraform]
+symbol = "💠 "
+format = 'via [$symbol$version]($style) '
+style = 'purple bold'
+
+[aws]
+symbol = "☁️ "
+format = 'on [$symbol($profile )(\($region\) )(\[$duration\] )]($style)'
+style = 'bold yellow'
+
+[kubernetes]
+symbol = "⎈ "
+format = 'on [$symbol$context( \($namespace\))]($style) '
+style = 'cyan bold'
+disabled = false
 
 [package]
 disabled = true
