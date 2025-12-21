@@ -54,6 +54,34 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+# Wait for dpkg/apt lock to be released
+wait_for_dpkg_lock() {
+    local max_wait=300  # 5 minutes maximum wait
+    local wait_time=0
+    local check_interval=2
+
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
+          fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
+          fuser /var/cache/apt/archives/lock >/dev/null 2>&1; do
+
+        if [ $wait_time -ge $max_wait ]; then
+            error "Timeout waiting for dpkg lock after ${max_wait}s"
+            return 1
+        fi
+
+        if [ $wait_time -eq 0 ]; then
+            info "Waiting for other package managers to finish..."
+        fi
+
+        sleep $check_interval
+        wait_time=$((wait_time + check_interval))
+    done
+
+    # Additional small delay to ensure lock is fully released
+    [ $wait_time -gt 0 ] && sleep 1
+    return 0
+}
+
 # Check if package is available in repositories
 package_available() {
     LC_ALL=C apt-cache policy "$1" 2>/dev/null | grep -q "Candidate:" && \
@@ -65,10 +93,13 @@ safe_install() {
     packages=("$@")
     available_packages=()
     unavailable_packages=()
-    
+
+    # Wait for any running package managers to finish
+    wait_for_dpkg_lock || return 1
+
     # Update package list before checking availability (only if needed)
-    # apt-get update >/dev/null 2>&1 
-    
+    # apt-get update >/dev/null 2>&1
+
     for pkg in "${packages[@]}"; do
         if package_available "$pkg"; then
             available_packages+=("$pkg")
