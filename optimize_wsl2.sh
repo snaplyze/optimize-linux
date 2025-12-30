@@ -669,8 +669,12 @@ setopt HIST_SAVE_NO_DUPS HIST_VERIFY APPEND_HISTORY
 setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS PUSHD_SILENT
 
 # Initialize Completion FIRST (before plugins)
-fpath=(~/.zsh/zsh-completions/src $fpath)
-autoload -Uz compinit
+# Use safe array expansion and check directory existence
+if [[ -d "$HOME/.zsh/zsh-completions/src" ]]; then
+    fpath=("$HOME/.zsh/zsh-completions/src" "${fpath[@]}")
+fi
+
+autoload -Uz compinit compdump
 # Enable EXTENDED_GLOB for (#qN.mh+24)
 setopt EXTENDED_GLOB
 if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
