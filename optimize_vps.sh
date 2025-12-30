@@ -554,17 +554,22 @@ setopt HIST_SAVE_NO_DUPS HIST_VERIFY APPEND_HISTORY
 # Directory navigation
 setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS PUSHD_SILENT
 
-# Load zsh-syntax-highlighting FIRST
-if [[ -f ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]]; then
-    ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)
-    source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+# Initialize Completion FIRST (before plugins)
+fpath=(~/.zsh/zsh-completions/src $fpath)
+autoload -Uz compinit
+# Enable EXTENDED_GLOB for (#qN.mh+24)
+setopt EXTENDED_GLOB
+if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
+    compinit
+else
+    compinit -C
 fi
 
 # Load zsh-autosuggestions SECOND
 if [[ -f ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
     source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
     ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
-    ZSH_AUTOSUGGEST_STRATEGY=(history)
+    ZSH_AUTOSUGGEST_STRATEGY=(history completion)
     ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
     ZSH_AUTOSUGGEST_USE_ASYNC=true
     ZSH_AUTOSUGGEST_MANUAL_REBIND=1
@@ -572,13 +577,10 @@ if [[ -f ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
     bindkey '^[^M' autosuggest-execute
 fi
 
-# Completion settings
-fpath=(~/.zsh/zsh-completions/src $fpath)
-autoload -Uz compinit
-if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
-    compinit
-else
-    compinit -C
+# Load zsh-syntax-highlighting LAST
+if [[ -f ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]]; then
+    ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)
+    source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 fi
 
 setopt COMPLETE_IN_WORD ALWAYS_TO_END PATH_DIRS AUTO_MENU AUTO_LIST AUTO_PARAM_SLASH
