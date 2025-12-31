@@ -142,6 +142,44 @@ check_dialog() {
 }
 
 ################################################################################
+# 0. Detect OS Version & Validation
+################################################################################
+section "Step 0: Pre-flight Checks"
+
+# Detect OS
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS_NAME=$NAME
+    OS_VERSION=$VERSION_ID
+    OS_CODENAME=$VERSION_CODENAME
+    log "Detected OS: $OS_NAME $OS_VERSION ($OS_CODENAME)"
+else
+    error "Cannot detect OS version. /etc/os-release not found."
+    exit 1
+fi
+
+# Check if Debian-based
+if [[ ! "$ID" =~ ^(debian|ubuntu)$ ]]; then
+    error "This script is designed for Debian/Ubuntu only. Detected: $ID"
+    exit 1
+fi
+
+# Validate Debian version
+case "$ID" in
+    debian)
+        if [[ ! "$VERSION_ID" =~ ^(11|12|13)$ ]]; then
+            warn "This script is optimized for Debian 11-13. Detected: Debian $VERSION_ID"
+            warn "Continuing anyway, but some features (like XanMod) might fail."
+        fi
+        ;;
+    ubuntu)
+        if (( $(echo "$VERSION_ID < 20.04" | bc -l) )); then
+            warn "This script is optimized for Ubuntu 20.04+. Detected: Ubuntu $VERSION_ID"
+        fi
+        ;;
+esac
+
+################################################################################
 # Configuration Menu
 ################################################################################
 
@@ -925,45 +963,153 @@ fi
 ################################################################################
 if $INSTALL_GO; then
     section "Step 7a: Go Installation"
-    GO_ARCH="amd64"
+    
+    log "Installing Go programming language..."
+    
+    # Detect architecture
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64) GO_ARCH="amd64" ;;
+        aarch64) GO_ARCH="arm64" ;;
+        *) GO_ARCH="$ARCH"; warn "Unknown architecture, attempting with: $ARCH" ;;
+    esac
+    
+    # Fetch latest Go version
     GO_VERSION=$(curl -s https://go.dev/VERSION?m=text 2>/dev/null | head -1 | sed 's/go//')
-    [ -z "$GO_VERSION" ] && GO_VERSION="1.22.0"
+    if [ -z "$GO_VERSION" ]; then
+        GO_VERSION="1.25.4"  # fallback version
+        warn "Could not detect latest Go version, using fallback: $GO_VERSION"
+    fi
     
-    wget "https://dl.google.com/go/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -O /tmp/go.tar.gz
-    rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/go.tar.gz
+    GO_DOWNLOAD_URL="https://dl.google.com/go/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+    GO_CHECKSUM_URL="https://dl.google.com/go/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz.sha256"
     
-    echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' > /etc/profile.d/go.sh
-    rm /tmp/go.tar.gz
-    log "Go $GO_VERSION installed."
+    log "Go version: $GO_VERSION ($GO_ARCH)"
+    log "Downloading Go from: $GO_DOWNLOAD_URL"
+    
+    # Download Go binary
+    cd /tmp
+    
+    # Download checksum
+    CHECKSUM=$(curl -fsSL "$GO_CHECKSUM_URL" 2>/dev/null | head -1 | awk '{print $1}')
+    if [ -z "$CHECKSUM" ]; then
+        error "Could not download Go checksum from $GO_CHECKSUM_URL"
+        exit 1
+    fi
+    
+    # Download binary
+    curl -fsSL "$GO_DOWNLOAD_URL" -o "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+    
+    # Verify checksum
+    ACTUAL_CHECKSUM=$(sha256sum "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" | awk '{print $1}')
+    if [ "$CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+        error "Go checksum verification failed!"
+        error "Expected: $CHECKSUM"
+        error "Actual:   $ACTUAL_CHECKSUM"
+        exit 1
+    fi
+    log "Go checksum verified successfully"
+    
+    # Remove old Go installation if exists
+    rm -rf /usr/local/go
+    mkdir -p /usr/local/go
+    
+    # Extract
+    tar -xzf "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -C /usr/local/
+    
+    # Create profile.d entry
+    cat > /etc/profile.d/golang.sh <<'GOEOF'
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/go
+export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+GOEOF
+    chmod +x /etc/profile.d/golang.sh
+    
+    # Add to .zshrc for root
+    if [ -f /root/.zshrc ] && ! grep -q "GOROOT" /root/.zshrc; then
+        cat >> /root/.zshrc <<'GORC'
+# Go configuration
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/go
+export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+GORC
+    fi
+    
+    # Add to .zshrc for new user
+    USER_HOME=$(eval echo ~$NEW_USER)
+    if [ -f "$USER_HOME/.zshrc" ] && ! grep -q "GOROOT" "$USER_HOME/.zshrc"; then
+         cat >> "$USER_HOME/.zshrc" <<'GORC'
+# Go configuration
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/go
+export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+GORC
+        chown "$NEW_USER:$NEW_USER" "$USER_HOME/.zshrc"
+    fi
+    
+    # Cleanup
+    rm -f "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+    log "Go ${GO_VERSION} installed successfully"
 fi
 
 if $INSTALL_NODE; then
     section "Step 7b: Node.js (NVM)"
     
-    install_nvm() {
-        local user=$1
-        local home=$(eval echo ~$user)
-        log "Installing NVM for $user..."
+    install_nvm_for_user() {
+        local username=$1
+        local user_home=$(eval echo ~$username)
+        log "Installing NVM for user: $username"
         
-        # Create temp installer
-        cat > "/tmp/nvm_install.sh" <<'NVMINST'
+        local nvm_install_script="/tmp/nvm_install_${username}.sh"
+        
+        cat > "$nvm_install_script" <<'NVMINSTALL'
+#!/bin/bash
+export HOME="$1"
+export USER="$2"
+
+# Get latest NVM version
+NVM_VERSION=$(curl -s https://api.github.com/repos/nvm-sh/nvm/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+[ -z "$NVM_VERSION" ] && NVM_VERSION="v0.39.7"
+
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash
+
 export NVM_DIR="$HOME/.nvm"
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
 nvm install --lts
-NVMINST
-        chmod +x /tmp/nvm_install.sh
+nvm alias default lts/*
+nvm use default
+NVMINSTALL
+
+        chmod +x "$nvm_install_script"
         
-        if [ "$user" = "root" ]; then
-            /tmp/nvm_install.sh
+        if [ "$username" = "root" ]; then
+            bash "$nvm_install_script" "$user_home" "$username"
         else
-            su - "$user" -c "/tmp/nvm_install.sh"
+            su - "$username" -c "bash $nvm_install_script $user_home $username"
         fi
-        rm -f /tmp/nvm_install.sh
+        
+        # Add lazy load to zshrc
+        if [ -f "$user_home/.zshrc" ] && ! grep -q "NVM_DIR" "$user_home/.zshrc"; then
+             cat >> "$user_home/.zshrc" <<'NVMRC'
+# NVM Lazy Load
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    nvm() { unset -f nvm node npm npx; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; nvm "$@"; }
+    node() { unset -f nvm node npm npx; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; node "$@"; }
+    npm() { unset -f nvm node npm npx; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; npm "$@"; }
+    npx() { unset -f nvm node npm npx; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; npx "$@"; }
+fi
+NVMRC
+             chown "$username:$username" "$user_home/.zshrc"
+        fi
+        
+        rm -f "$nvm_install_script"
+        log "NVM setup completed for $username"
     }
     
-    install_nvm root
-    [ -n "$NEW_USER" ] && [ "$NEW_USER" != "root" ] && install_nvm "$NEW_USER"
+    install_nvm_for_user root
+    [ -n "$NEW_USER" ] && [ "$NEW_USER" != "root" ] && install_nvm_for_user "$NEW_USER"
 fi
 
 ################################################################################
@@ -1365,3 +1511,11 @@ log "  • minipc-monitor.sh"
 log "  • minipc-cleanup.sh"
 log "  • minipc-info.sh"
 log "  • network-test.sh"
+
+echo ""
+if prompt_yn "Do you want to reboot now?" true; then
+    log "Rebooting..."
+    reboot
+else
+    warn "Please remember to reboot manually!"
+fi
