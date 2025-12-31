@@ -641,6 +641,9 @@ export EDITOR='vim'
 export VISUAL='vim'
 export PAGER='less'
 
+# Add sbin to PATH for admin commands (ufw, sysctl, ip, etc.) highlighting
+export PATH=$PATH:/usr/sbin:/sbin
+
 # Docker aliases
 alias d='docker'
 alias dc='docker compose'
