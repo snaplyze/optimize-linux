@@ -362,47 +362,102 @@ fi
 if $CREATE_USER; then
     section "Step 3: User Creation"
     
+    echo ""
+    info "We need to create a new sudo user for secure access."
+    if $CONFIGURE_SECURITY; then
+        info "Root login will be disabled after setup."
+    fi
+    echo ""
+    
     read -p "Enter new username: " NEW_USER
-    if [ -n "$NEW_USER" ]; then
-        if id "$NEW_USER" &>/dev/null; then
-            warn "User $NEW_USER exists."
-        else
-            adduser --gecos "" --disabled-password "$NEW_USER"
-            passwd "$NEW_USER"
-            usermod -aG sudo "$NEW_USER"
-        fi
+    
+    if [ -z "$NEW_USER" ]; then
+        error "Username cannot be empty!"
+        exit 1
+    fi
+    
+    # Check if user already exists
+    if id "$NEW_USER" &>/dev/null; then
+        warn "User $NEW_USER already exists. Skipping user creation..."
         
-        # Configure passwordless sudo
-        echo "$NEW_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$NEW_USER
-        chmod 440 /etc/sudoers.d/$NEW_USER
-        
-        # Setup SSH keys
-        USER_HOME=$(eval echo ~$NEW_USER)
-        mkdir -p "$USER_HOME/.ssh"
-        chmod 700 "$USER_HOME/.ssh"
-        
+        # Offer to change password for existing user
         echo ""
-        read -p "Paste SSH Public Key (or press Enter to skip): " SSH_KEY
-        if [ -n "$SSH_KEY" ]; then
-            echo "$SSH_KEY" > "$USER_HOME/.ssh/authorized_keys"
-            chmod 600 "$USER_HOME/.ssh/authorized_keys"
-            chown -R "$NEW_USER:$NEW_USER" "$USER_HOME/.ssh"
-            
-            if $CONFIGURE_SECURITY; then
-                log "Hardening SSH..."
-                cat > /etc/ssh/sshd_config.d/99-hardening.conf <<EOF
+        read -p "Do you want to change password for existing user $NEW_USER? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            passwd "$NEW_USER" && log "Password changed for $NEW_USER" || warn "Failed to change password"
+        fi
+    else
+        # Create user with disabled password initially (will be set below)
+        adduser --gecos "" --disabled-password "$NEW_USER" || {
+            error "Failed to create user $NEW_USER"
+            exit 1
+        }
+        
+        # Add to sudo group
+        usermod -aG sudo "$NEW_USER"
+        log "User $NEW_USER created and added to sudo group"
+        
+        # Set password for new user
+        log "Setting password for new user $NEW_USER..."
+        passwd "$NEW_USER" || warn "Failed to set password"
+    fi
+    
+    # Store user for later use (adding to docker group, video/render groups)
+    DOCKER_USER=$NEW_USER
+    
+    # Configure passwordless sudo for the new user
+    echo "$NEW_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$NEW_USER
+    chmod 440 /etc/sudoers.d/$NEW_USER
+    log "Passwordless sudo configured for $NEW_USER"
+    
+    # Configure passwordless sudo for root
+    if ! grep -q "^root.*NOPASSWD:ALL" /etc/sudoers.d/root 2>/dev/null; then
+        echo "root ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/root
+        chmod 440 /etc/sudoers.d/root
+        log "Passwordless sudo configured for root"
+    fi
+    
+    # Setup SSH keys
+    USER_HOME=$(eval echo ~$NEW_USER)
+    mkdir -p "$USER_HOME/.ssh"
+    chmod 700 "$USER_HOME/.ssh"
+    
+    echo ""
+    info "Please paste your SSH public key (the content of your id_rsa.pub or id_ed25519.pub):"
+    info "If you don't have one, generate it on your local machine with: ssh-keygen -t ed25519"
+    info "Press Enter to skip SSH key setup (you can add it later)"
+    echo ""
+    read -p "SSH Public Key: " SSH_PUBLIC_KEY
+    
+    if [ -n "$SSH_PUBLIC_KEY" ]; then
+        echo "$SSH_PUBLIC_KEY" > "$USER_HOME/.ssh/authorized_keys"
+        chmod 600 "$USER_HOME/.ssh/authorized_keys"
+        chown -R "$NEW_USER:$NEW_USER" "$USER_HOME/.ssh"
+        log "SSH public key added for $NEW_USER"
+        
+        if $CONFIGURE_SECURITY; then
+            log "Hardening SSH configuration..."
+            cat > /etc/ssh/sshd_config.d/99-hardening.conf <<EOF
 PermitRootLogin no
 PasswordAuthentication no
 PubkeyAuthentication yes
 AllowUsers $NEW_USER
 EOF
-                systemctl restart ssh
-            fi
+            systemctl restart ssh 2>/dev/null || service ssh restart 2>/dev/null || true
+            log "SSH hardened: only $NEW_USER can login with SSH keys"
+        fi
+    else
+        warn "SSH key setup skipped. You can add a key later to ~/.ssh/authorized_keys"
+        if $CONFIGURE_SECURITY; then
+            warn "SSH hardening skipped (no SSH key provided)"
+            CONFIGURE_SECURITY=false
         fi
     fi
 else
     NEW_USER=$(logname 2>/dev/null || echo $SUDO_USER)
     [ -z "$NEW_USER" ] && NEW_USER="root"
+    log "Using existing user: $NEW_USER"
 fi
 DOCKER_USER=$NEW_USER
 
