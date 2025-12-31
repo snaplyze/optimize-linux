@@ -1895,7 +1895,12 @@ log "I/O scheduler optimized"
 log "Step 22: Optimizing CPU governor..."
 
 # Install cpufrequtils for CPU frequency management
-safe_install cpufrequtils linux-cpupower
+# cpufrequtils is deprecated in Debian 13, using linux-cpupower
+if [[ "$ID" == "debian" && "$VERSION_ID" -ge 13 ]]; then
+    safe_install linux-cpupower
+else
+    safe_install cpufrequtils linux-cpupower
+fi
 
 # Set CPU governor to 'schedutil' (balance between performance and power efficiency)
 # For VPN servers, 'schedutil' provides good balance - responsive when needed, efficient when idle
