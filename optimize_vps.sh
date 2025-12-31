@@ -219,7 +219,21 @@ if id "$NEW_USER" &>/dev/null; then
     read -p "Do you want to change password for existing user $NEW_USER? (y/N): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        passwd "$NEW_USER" && log "Password changed for $NEW_USER" || warn "Failed to change password"
+        # Loop until password is successfully set
+        while true; do
+            if passwd "$NEW_USER"; then
+                log "Password changed for $NEW_USER"
+                break
+            else
+                warn "Failed to change password. Please try again."
+                read -p "Retry? (Y/n): " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Nn]$ ]]; then
+                    warn "Skipping password change."
+                    break
+                fi
+            fi
+        done
     fi
 else
     # Create user with disabled password initially (will be set below)
@@ -234,7 +248,19 @@ else
 
     # Set password for new user
     log "Setting password for new user $NEW_USER..."
-    passwd "$NEW_USER" || warn "Failed to set password"
+    while true; do
+        if passwd "$NEW_USER"; then
+             break
+        else
+             warn "Failed to set password. Please try again."
+             read -p "Retry? (Y/n): " -n 1 -r
+             echo
+             if [[ $REPLY =~ ^[Nn]$ ]]; then
+                 warn "Skipping password setup (user might be locked)."
+                 break
+             fi
+        fi
+    done
 fi
 
 # Store user for later use (adding to docker group)
