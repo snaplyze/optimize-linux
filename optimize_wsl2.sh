@@ -551,10 +551,11 @@ check_dialog() {
     
     # Generate locales
     for locale in $LOCALE_TO_GENERATE; do
-        if ! grep -q "^${locale} UTF-8" /etc/locale.gen 2>/dev/null && ! grep -q "^# ${locale} UTF-8" /etc/locale.gen 2>/dev/null; then
-            echo "${locale} UTF-8" >> /etc/locale.gen
-        fi
-        sed -i "s/^# *\(${locale} UTF-8\)/\1/" /etc/locale.gen
+        # Remove all existing entries for this locale (both commented and uncommented)
+        sed -i "/^#* *${locale} UTF-8/d" /etc/locale.gen
+        
+        # Add a single uncommented entry
+        echo "${locale} UTF-8" >> /etc/locale.gen
     done
 
     # Generate locales with C.UTF-8 to avoid LC_ALL=C conflicts

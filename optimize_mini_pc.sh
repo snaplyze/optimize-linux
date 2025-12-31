@@ -300,15 +300,13 @@ if $CONFIGURE_LOCALES; then
     for locale in $LOCALE_TO_GENERATE; do
         log "Processing locale: $locale"
         
-        # Ensure the locale exists in locale.gen
-        if ! grep -q "^${locale} UTF-8" /etc/locale.gen 2>/dev/null && ! grep -q "^# ${locale} UTF-8" /etc/locale.gen 2>/dev/null; then
-            echo "${locale} UTF-8" >> /etc/locale.gen
-            log "Added ${locale} to /etc/locale.gen"
-        fi
+        # Remove all existing entries for this locale (both commented and uncommented)
+        # to avoid duplicates from previous runs
+        sed -i "/^#* *${locale} UTF-8/d" /etc/locale.gen
         
-        # Uncomment the locale
-        sed -i "s/^# *\(${locale} UTF-8\)/\1/" /etc/locale.gen
-        log "Uncommented ${locale} in /etc/locale.gen"
+        # Add a single uncommented entry
+        echo "${locale} UTF-8" >> /etc/locale.gen
+        log "Added ${locale} to /etc/locale.gen"
     done
 
     # Generate locales without LC_ALL set
