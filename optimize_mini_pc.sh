@@ -225,7 +225,7 @@ show_menu() {
     prompt_yn "Install Zsh + Starship Shell (Full Server Config)" true && INSTALL_ZSH=true || INSTALL_ZSH=false
     prompt_yn "Install Go (Latest)" true && INSTALL_GO=true || INSTALL_GO=false
     prompt_yn "Install Node.js (LTS via NVM)" true && INSTALL_NODE=true || INSTALL_NODE=false
-    prompt_yn "Install Node.js (LTS via NVM)" true && INSTALL_NODE=true || INSTALL_NODE=false
+
     
     SAMBA_SHARE_NAME="SSD_Storage"
     prompt_yn "Install Samba File Sharing" false && INSTALL_SAMBA=true || INSTALL_SAMBA=false
