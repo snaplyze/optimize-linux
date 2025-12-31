@@ -1250,12 +1250,24 @@ if $PERFORMANCE_TUNING; then
         [ $SWAP_SIZE -lt 1 ] && SWAP_SIZE=2
     fi
     
+    # Validated swap check and recreate logic (ported from optimize_vps.sh)
+    if swapon --show | grep -q "/swapfile"; then
+        log "Removing existing swap (to ensure correct size)..."
+        swapoff /swapfile 2>/dev/null || true
+        rm -f /swapfile
+        sed -i '/\/swapfile/d' /etc/fstab
+    fi
+
+    log "Creating ${SWAP_SIZE}GB Swap..."
+    if ! /usr/bin/fallocate -l ${SWAP_SIZE}G /swapfile 2>/dev/null; then
+        dd if=/dev/zero of=/swapfile bs=1G count=$SWAP_SIZE status=progress
+    fi
+    
+    chmod 600 /swapfile
+    /usr/sbin/mkswap /swapfile
+    /usr/sbin/swapon /swapfile
+    
     if ! grep -q "/swapfile" /etc/fstab; then
-        log "Creating ${SWAP_SIZE}GB Swap..."
-        /usr/bin/fallocate -l ${SWAP_SIZE}G /swapfile || dd if=/dev/zero of=/swapfile bs=1G count=$SWAP_SIZE
-        chmod 600 /swapfile
-        /usr/sbin/mkswap /swapfile
-        /usr/sbin/swapon /swapfile
         echo '/swapfile none swap sw 0 0' >> /etc/fstab
     fi
 
