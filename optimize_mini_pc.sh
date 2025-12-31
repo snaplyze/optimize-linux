@@ -1251,9 +1251,9 @@ if $PERFORMANCE_TUNING; then
     fi
     
     # Validated swap check and recreate logic (ported from optimize_vps.sh)
-    if swapon --show | grep -q "/swapfile"; then
+    if /usr/sbin/swapon --show | grep -q "/swapfile"; then
         log "Removing existing swap (to ensure correct size)..."
-        swapoff /swapfile 2>/dev/null || true
+        /usr/sbin/swapoff /swapfile 2>/dev/null || true
         rm -f /swapfile
         sed -i '/\/swapfile/d' /etc/fstab
     fi
@@ -1380,8 +1380,8 @@ net.ipv4.conf.default.accept_redirects = 0
 
 EOF
 
-    # Apply sysctl settings with error tolerance for missing parameters
-    sysctl -e -p /etc/sysctl.d/99-minipc.conf 2>&1 | grep -v "cannot stat" | grep -v "No such file or directory" || true
+    # Apply sysctl settings
+    /usr/sbin/sysctl -p /etc/sysctl.d/99-minipc.conf || warn "Some sysctl parameters could not be applied."
     log "Kernel parameters applied (some may be skipped if not supported by hardware)"
 
     # Limits (optimized for media server)
@@ -1438,13 +1438,13 @@ fi
 if $CONFIGURE_SECURITY; then
     section "Step 11: Security"
     
-    ufw default deny incoming
-    ufw default allow outgoing
-    ufw allow 22/tcp
-    ufw allow 80/tcp
-    ufw allow 443/tcp
-    $INSTALL_SAMBA && ufw allow samba
-    ufw --force enable
+    /usr/sbin/ufw default deny incoming
+    /usr/sbin/ufw default allow outgoing
+    /usr/sbin/ufw allow 22/tcp
+    /usr/sbin/ufw allow 80/tcp
+    /usr/sbin/ufw allow 443/tcp
+    $INSTALL_SAMBA && /usr/sbin/ufw allow samba
+    /usr/sbin/ufw --force enable
     
     # Fail2Ban
     cat > /etc/fail2ban/jail.local <<EOF

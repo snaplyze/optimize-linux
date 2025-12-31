@@ -1673,7 +1673,8 @@ EOF
 
 # Apply sysctl settings with error tolerance for missing parameters
 # Some parameters may not exist in virtualized environments (WSL2, containers, etc.)
-sysctl -e -p /etc/sysctl.d/99-vps-optimization.conf 2>&1 | grep -v "cannot stat" | grep -v "No such file or directory" || true
+# Apply sysctl settings with error tolerance for missing parameters
+/usr/sbin/sysctl -e -p /etc/sysctl.d/99-vps-optimization.conf 2>&1 | grep -v "cannot stat" | grep -v "No such file or directory" || true
 log "Kernel parameters applied (some may be skipped in virtualized environments)"
 
 ################################################################################
@@ -1682,9 +1683,9 @@ log "Kernel parameters applied (some may be skipped in virtualized environments)
 log "Step 12: Setting up swap file..."
 
 # Remove existing swap if present
-if swapon --show | grep -q "/swapfile"; then
+if /usr/sbin/swapon --show | grep -q "/swapfile"; then
     log "Removing existing swap..."
-    swapoff /swapfile
+    /usr/sbin/swapoff /swapfile
     rm -f /swapfile
     sed -i '/\/swapfile/d' /etc/fstab
 fi
@@ -1708,23 +1709,20 @@ log "Swap file created and enabled (${SWAP_SIZE}GB, swappiness=$SWAPPINESS)"
 ################################################################################
 # 11. Firewall Configuration (UFW)
 ################################################################################
-log "Step 13: Firewall configuration..."
+# Configure Firewall (UFW)
+log "Configuring firewall (UFW)..."
+/usr/sbin/ufw --force enable >/dev/null 2>&1 || warn "Could not enable UFW"
+# Default: Deny Incoming, Allow Outgoing
+# We use 'ufw default' commands which are robust
+/usr/sbin/ufw default deny incoming 2>/dev/null
+/usr/sbin/ufw default allow outgoing 2>/dev/null
 
-# Enable UFW firewall (iptables-legacy was already configured above for compatibility)
-log "Enabling UFW firewall..."
-ufw --force enable >/dev/null 2>&1 || warn "Could not enable UFW"
+# Allow SSH (Port 22)
+/usr/sbin/ufw allow 22/tcp 2>/dev/null || warn "Could not allow SSH port"
 
-# Configure UFW rules
-# Default policies
-ufw default deny incoming 2>/dev/null
-ufw default allow outgoing 2>/dev/null
-
-# Allow SSH (critical for VPS access)
-ufw allow 22/tcp 2>/dev/null || warn "Could not allow SSH port"
-
-# Allow HTTP and HTTPS if Docker is running web services
-ufw allow 80/tcp 2>/dev/null
-ufw allow 443/tcp 2>/dev/null
+# Allow HTTP/HTTPS
+/usr/sbin/ufw allow 80/tcp 2>/dev/null
+/usr/sbin/ufw allow 443/tcp 2>/dev/null
 
 log "UFW firewall enabled with SSH access allowed"
 log "Firewall rules: SSH (22/tcp), HTTP (80/tcp), HTTPS (443/tcp) allowed"
