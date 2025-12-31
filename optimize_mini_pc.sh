@@ -1381,7 +1381,8 @@ net.ipv4.conf.default.accept_redirects = 0
 EOF
 
     # Apply sysctl settings
-    /usr/sbin/sysctl -p /etc/sysctl.d/99-minipc.conf || warn "Some sysctl parameters could not be applied."
+    # Apply sysctl settings with error tolerance for missing parameters
+    /usr/sbin/sysctl -e -p /etc/sysctl.d/99-minipc.conf 2>&1 | grep -v "cannot stat" | grep -v "No such file or directory" | grep -v "unknown key" || true
     log "Kernel parameters applied (some may be skipped if not supported by hardware)"
 
     # Limits (optimized for media server)
@@ -1592,7 +1593,7 @@ log "  • network-test.sh"
 echo ""
 if prompt_yn "Do you want to reboot now?" true; then
     log "Rebooting..."
-    reboot
+    /usr/sbin/reboot
 else
     warn "Please remember to reboot manually!"
 fi

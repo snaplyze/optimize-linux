@@ -2314,7 +2314,7 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     log "Rebooting system in 5 seconds... Press Ctrl+C to cancel"
     sleep 5
-    reboot
+    /usr/sbin/reboot
 else
     log "Reboot skipped. Please reboot manually when ready with: sudo reboot"
     echo ""
