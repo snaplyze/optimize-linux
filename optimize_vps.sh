@@ -1661,13 +1661,7 @@ kernel.panic_on_oops = 1
 kernel.pid_max = 65536
 kernel.threads-max = 65536
 
-# Scheduler optimization (low latency for VPN)
-# Note: sched_migration_cost_ns may not be available in virtualized environments
-kernel.sched_migration_cost_ns = 5000000
-kernel.sched_autogroup_enabled = 0
 
-# Entropy (important for VPN encryption)
-kernel.random.write_wakeup_threshold = 1024
 
 EOF
 

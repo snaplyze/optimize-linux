@@ -1355,14 +1355,7 @@ fs.inotify.max_user_instances = 1024
 net.netfilter.nf_conntrack_max = 262144
 net.netfilter.nf_conntrack_tcp_timeout_established = 3600
 
-# ============================================================================
-# Kernel Performance (low latency for transcoding)
-# ============================================================================
-kernel.sched_migration_cost_ns = 5000000
-kernel.sched_autogroup_enabled = 0
 
-# Entropy (for QuickSync encryption)
-kernel.random.write_wakeup_threshold = 1024
 
 # ============================================================================
 # Security
