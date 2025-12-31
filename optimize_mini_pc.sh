@@ -241,7 +241,7 @@ show_menu() {
                 echo -e "  ${RED}Invalid name. Use only A-Z, a-z, 0-9, underscores, and hyphens.${NC}"
             fi
         done
-        log_info "Samba Share Name set to: $SAMBA_SHARE_NAME"
+        info "Samba Share Name set to: $SAMBA_SHARE_NAME"
     fi
 
     echo ""
