@@ -521,8 +521,24 @@ if $INSTALL_XANMOD; then
     # cpufrequtils is deprecated in Debian 13, using linux-cpupower
     safe_install linux-cpupower
 
+    # Detect best available governor
+    AVAILABLE_GOVERNORS=$(cpupower frequency-info -g | grep "available cpufreq governors:" | cut -d: -f2)
+    
+    if [[ "$AVAILABLE_GOVERNORS" == *"schedutil"* ]]; then
+        GOVERNOR="schedutil"
+    elif [[ "$AVAILABLE_GOVERNORS" == *"powersave"* ]]; then
+        GOVERNOR="powersave"
+        log "Note: Using 'powersave' governor (standard for intel_pstate driver)"
+    elif [[ "$AVAILABLE_GOVERNORS" == *"ondemand"* ]]; then
+        GOVERNOR="ondemand"
+    else
+        GOVERNOR="performance"
+    fi
+    
+    log "Selected CPU Governor: $GOVERNOR"
+
     # Apply immediately
-    cpupower frequency-set -g schedutil 2>/dev/null || true
+    cpupower frequency-set -g $GOVERNOR 2>/dev/null || true
 
     # Create persistent service for cpupower
     cat > /etc/systemd/system/cpupower-config.service <<EOF
@@ -532,7 +548,7 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/cpupower frequency-set -g schedutil
+ExecStart=/usr/bin/cpupower frequency-set -g $GOVERNOR
 
 [Install]
 WantedBy=multi-user.target
