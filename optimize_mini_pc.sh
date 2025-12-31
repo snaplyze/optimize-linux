@@ -244,8 +244,16 @@ fi
 if $CONFIGURE_LOCALES; then
     section "Step 2: Locales & Timezone"
     
-    safe_install locales dialog
+    # Check if dialog is available, fallback to read if not
+    check_dialog() {
+        if command -v dialog > /dev/null 2>&1; then
+            return 0
+        else
+            return 1
+        fi
+    }
 
+    # Locale selection
     echo "Select system locale:"
     echo "1) en_US.UTF-8 (English)"
     echo "2) ru_RU.UTF-8 (Russian)"
@@ -258,34 +266,79 @@ if $CONFIGURE_LOCALES; then
     fi
 
     case $LOCALE_CHOICE in
-        1) LOCALE_TO_GENERATE="en_US.UTF-8"; DEFAULT_LOCALE="en_US.UTF-8" ;;
-        2) LOCALE_TO_GENERATE="ru_RU.UTF-8"; DEFAULT_LOCALE="ru_RU.UTF-8" ;;
-        3) LOCALE_TO_GENERATE="en_US.UTF-8 ru_RU.UTF-8"; DEFAULT_LOCALE="en_US.UTF-8" ;;
-        *) LOCALE_TO_GENERATE="en_US.UTF-8"; DEFAULT_LOCALE="en_US.UTF-8" ;;
+        1)
+            LOCALE_TO_GENERATE="en_US.UTF-8"
+            DEFAULT_LOCALE="en_US.UTF-8"
+            log "Selected locale: English (en_US.UTF-8)"
+            ;;
+        2)
+            LOCALE_TO_GENERATE="ru_RU.UTF-8"
+            DEFAULT_LOCALE="ru_RU.UTF-8"
+            log "Selected locale: Russian (ru_RU.UTF-8)"
+            ;;
+        3)
+            LOCALE_TO_GENERATE="en_US.UTF-8 ru_RU.UTF-8"
+            DEFAULT_LOCALE="en_US.UTF-8"
+            log "Selected locales: English + Russian"
+            ;;
+        *)
+            warn "Invalid choice. Using English (en_US.UTF-8) as default"
+            LOCALE_TO_GENERATE="en_US.UTF-8"
+            DEFAULT_LOCALE="en_US.UTF-8"
+            ;;
     esac
 
-    log "Generating locales: $LOCALE_TO_GENERATE"
+    # Install locales package with availability check
+    if package_available locales; then
+        safe_install locales
+    else
+        warn "locales package not available"
+    fi
+
+    # Generate locales
+    log "Generating locales..."
     for locale in $LOCALE_TO_GENERATE; do
+        log "Processing locale: $locale"
+        
+        # Ensure the locale exists in locale.gen
         if ! grep -q "^${locale} UTF-8" /etc/locale.gen 2>/dev/null && ! grep -q "^# ${locale} UTF-8" /etc/locale.gen 2>/dev/null; then
             echo "${locale} UTF-8" >> /etc/locale.gen
+            log "Added ${locale} to /etc/locale.gen"
         fi
+        
+        # Uncomment the locale
         sed -i "s/^# *\(${locale} UTF-8\)/\1/" /etc/locale.gen
+        log "Uncommented ${locale} in /etc/locale.gen"
     done
 
+    # Generate locales without LC_ALL set
     LC_ALL=C.UTF-8 locale-gen
 
+    # Update locale configuration file
     cat > /etc/default/locale <<EOF
 LANG=$DEFAULT_LOCALE
 LANGUAGE=${DEFAULT_LOCALE%%.*}
 LC_ALL=$DEFAULT_LOCALE
 EOF
 
+    # Export for current session using safe C.UTF-8 to avoid warnings
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export LANGUAGE=en
+
+    # Write to profile for all users (will be applied on next login)
     cat > /etc/profile.d/locale.sh <<EOF
 export LANG=$DEFAULT_LOCALE
 export LC_ALL=$DEFAULT_LOCALE
 export LANGUAGE=${DEFAULT_LOCALE%%.*}
 EOF
+
+
     chmod +x /etc/profile.d/locale.sh
+
+    log "Default locale set to: $DEFAULT_LOCALE"
+    log "Locale will be fully applied after reboot or re-login"
+
 
     # Timezone
     echo ""
