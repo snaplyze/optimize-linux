@@ -1691,12 +1691,12 @@ fi
 
 # Create new swap with calculated size
 log "Creating ${SWAP_SIZE}GB swap file..."
-if ! fallocate -l ${SWAP_SIZE}G /swapfile 2>/dev/null; then
+if ! /usr/bin/fallocate -l ${SWAP_SIZE}G /swapfile 2>/dev/null; then
     dd if=/dev/zero of=/swapfile bs=1G count=$SWAP_SIZE status=progress
 fi
 chmod 600 /swapfile
-mkswap /swapfile
-swapon /swapfile
+/usr/sbin/mkswap /swapfile
+/usr/sbin/swapon /swapfile
 
 # Add to fstab
 if ! grep -q "/swapfile" /etc/fstab; then
