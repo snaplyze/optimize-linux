@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(**)",
+      "Bash(bash -n optimize_vps.sh && echo \"✓ VPS syntax OK\")",
+      "Bash(bash -n optimize_wsl2.sh && echo \"✓ WSL2 syntax OK\")",
+      "Bash(bash -n optimize_mini_pc.sh && echo \"✓ Mini PC syntax OK\")",
+      "Bash(git add:*)"
+    ]
+  }
+}

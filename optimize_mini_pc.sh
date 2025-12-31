@@ -312,7 +312,7 @@ if $CONFIGURE_LOCALES; then
     done
 
     # Generate locales without LC_ALL set
-    LC_ALL=C.UTF-8 locale-gen
+    LC_ALL=C.UTF-8 /usr/sbin/locale-gen
 
     # Update locale configuration file
     cat > /etc/default/locale <<EOF

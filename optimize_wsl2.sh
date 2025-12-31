@@ -562,7 +562,7 @@ check_dialog() {
     unset LANG
     export LC_ALL=C.UTF-8
     export LANG=C.UTF-8
-    locale-gen
+    /usr/sbin/locale-gen
     unset LC_ALL
     unset LANG
 
