@@ -225,7 +225,24 @@ show_menu() {
     prompt_yn "Install Zsh + Starship Shell (Full Server Config)" true && INSTALL_ZSH=true || INSTALL_ZSH=false
     prompt_yn "Install Go (Latest)" true && INSTALL_GO=true || INSTALL_GO=false
     prompt_yn "Install Node.js (LTS via NVM)" true && INSTALL_NODE=true || INSTALL_NODE=false
-    prompt_yn "Install Samba File Sharing (for /mnt/ssd)" false && INSTALL_SAMBA=true || INSTALL_SAMBA=false
+    prompt_yn "Install Node.js (LTS via NVM)" true && INSTALL_NODE=true || INSTALL_NODE=false
+    
+    SAMBA_SHARE_NAME="SSD_Storage"
+    prompt_yn "Install Samba File Sharing" false && INSTALL_SAMBA=true || INSTALL_SAMBA=false
+    if $INSTALL_SAMBA; then
+        while true; do
+            echo -ne "  ${YELLOW}Enter Samba Share Name (folder name) [SSD_Storage]: ${NC}"
+            read input_name
+            input_name=${input_name:-SSD_Storage}
+            if [[ "$input_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+                SAMBA_SHARE_NAME="$input_name"
+                break
+            else
+                echo -e "  ${RED}Invalid name. Use only A-Z, a-z, 0-9, underscores, and hyphens.${NC}"
+            fi
+        done
+        log_info "Samba Share Name set to: $SAMBA_SHARE_NAME"
+    fi
 
     echo ""
     echo -e "${CYAN}Starting installation with selected options...${NC}"
@@ -1512,12 +1529,22 @@ fi
 ################################################################################
 if $INSTALL_SAMBA; then
     section "Step 12: Samba"
-    safe_install samba
-    cp /etc/samba/smb.conf /etc/samba/smb.conf.bak
     
-    cat >> /etc/samba/smb.conf <<EOF
+    # Check if /mnt/ssd exists
+    if [ ! -d "/mnt/ssd" ]; then
+        warn "Directory /mnt/ssd does not exist! Skipping Samba configuration."
+        warn "Please mount your drive to /mnt/ssd and configure Samba manually later."
+    else
+        safe_install samba
+        
+        # Backup config
+        [ ! -f /etc/samba/smb.conf.bak ] && cp /etc/samba/smb.conf /etc/samba/smb.conf.bak
+        
+        # Add share if not exists (simple check)
+        if ! grep -q "\[$SAMBA_SHARE_NAME\]" /etc/samba/smb.conf; then
+            cat >> /etc/samba/smb.conf <<EOF
 
-[SSD_Storage]
+[$SAMBA_SHARE_NAME]
    path = /mnt/ssd
    browsable = yes
    writable = yes
@@ -1527,10 +1554,22 @@ if $INSTALL_SAMBA; then
    directory mask = 0755
    valid users = $NEW_USER
 EOF
-    
-    log "Samba configured. Please set password for $NEW_USER:"
-    smbpasswd -a "$NEW_USER" || warn "Samba password set failed."
-    systemctl restart smbd
+        else
+            warn "Share [$SAMBA_SHARE_NAME] might already exist in smb.conf"
+        fi
+        
+        log "Samba configured. Please set SMB password for user: $NEW_USER"
+        log "Note: This password can be different from system password."
+        
+        # Retry loop for password
+        while ! smbpasswd -a "$NEW_USER"; do
+            warn "Password setting failed (mismatch?). Please try again."
+            echo ""
+        done
+        
+        systemctl restart smbd
+        log "Samba service restarted."
+    fi
 fi
 
 ################################################################################
