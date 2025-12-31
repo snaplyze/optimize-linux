@@ -1905,22 +1905,36 @@ fi
 # Set CPU governor to 'schedutil' (balance between performance and power efficiency)
 # For VPN servers, 'schedutil' provides good balance - responsive when needed, efficient when idle
 if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then
-    log "Setting CPU governor to 'schedutil' for optimal VPN performance..."
+    # Detect best available governor
+    AVAILABLE_GOVERNORS=$(cpupower frequency-info -g 2>/dev/null | grep "available cpufreq governors:" | cut -d: -f2)
+    
+    if [[ "$AVAILABLE_GOVERNORS" == *"schedutil"* ]]; then
+        GOVERNOR="schedutil"
+    elif [[ "$AVAILABLE_GOVERNORS" == *"powersave"* ]]; then
+        GOVERNOR="powersave"
+        log "Note: Using 'powersave' governor (std for intel_pstate or fallback)"
+    elif [[ "$AVAILABLE_GOVERNORS" == *"ondemand"* ]]; then
+        GOVERNOR="ondemand"
+    else
+        GOVERNOR="performance"
+    fi
+
+    log "Selected CPU Governor: $GOVERNOR"
 
     # Create systemd service to set governor on boot
-    cat > /etc/systemd/system/cpu-governor.service <<'CPUGOV'
+    cat > /etc/systemd/system/cpu-governor.service <<EOF
 [Unit]
-Description=Set CPU Governor to schedutil
+Description=Set CPU Governor to $GOVERNOR
 After=multi-user.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/bash -c 'for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo "schedutil" > \$cpu 2>/dev/null || true; done'
+ExecStart=/usr/bin/cpupower frequency-set -g $GOVERNOR
 
 [Install]
 WantedBy=multi-user.target
-CPUGOV
+EOF
 
     # Enable and start the service
     systemctl daemon-reload
@@ -1928,11 +1942,9 @@ CPUGOV
     systemctl start cpu-governor.service
 
     # Also set it now
-    for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-        echo "schedutil" > $cpu 2>/dev/null || true
-    done
+    cpupower frequency-set -g $GOVERNOR 2>/dev/null || true
 
-    log "CPU governor set to 'schedutil'"
+    log "CPU governor set to '$GOVERNOR'"
 else
     warn "CPU frequency scaling not available (virtual CPU or governor not supported)"
 fi
