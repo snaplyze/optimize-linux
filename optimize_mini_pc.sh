@@ -518,13 +518,34 @@ if $INSTALL_XANMOD; then
     safe_install linux-xanmod-x64v2
     
     # CPU Governor (schedutil is best for N5095)
-    sed -i 's/^GOVERNOR=.*/GOVERNOR="schedutil"/' /etc/default/cpufrequtils 2>/dev/null || echo 'GOVERNOR="schedutil"' > /etc/default/cpufrequtils
-    systemctl restart cpufrequtils 2>/dev/null || true
+    # cpufrequtils is deprecated in Debian 13, using linux-cpupower
+    safe_install linux-cpupower
+
+    # Apply immediately
+    cpupower frequency-set -g schedutil 2>/dev/null || true
+
+    # Create persistent service for cpupower
+    cat > /etc/systemd/system/cpupower-config.service <<EOF
+[Unit]
+Description=Apply CPU performance settings
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/cpupower frequency-set -g schedutil
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload
+    systemctl enable cpupower-config.service
+    systemctl start cpupower-config.service
 fi
 
 if $INSTALL_INTEL_GPU; then
     log "Installing Intel GPU Drivers..."
-    safe_install intel-media-va-driver-non-free libmfx1 intel-gpu-tools vainfo mesa-utils
+    # libmfx1 is replaced by libmfx-gen1.2 in Debian 13 for Jasper Lake+
+    safe_install intel-media-va-driver-non-free libmfx-gen1.2 intel-gpu-tools vainfo mesa-utils
     
     /usr/sbin/groupadd -f render
     /usr/sbin/groupadd -f video
