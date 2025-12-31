@@ -218,7 +218,6 @@ if $UPDATE_SYSTEM; then
         # Combined list from VPS + specific needs
         safe_install wget curl git htop iotop sysstat net-tools \
             iptables ufw fail2ban unattended-upgrades apt-listchanges \
-            # neofetch lm-sensors cpufrequtils speedtest-cli \
             zip unzip gnupg ca-certificates lsb-release \
             lm-sensors cpufrequtils speedtest-cli \
             fzf ripgrep fd-find bat bc needrestart ncdu tree vim nano tmux \
