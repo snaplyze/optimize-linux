@@ -441,17 +441,17 @@ if $CREATE_USER; then
 
             # Ensure user is in sudo group
             if ! groups "$NEW_USER" | grep -q sudo; then
-                usermod -aG sudo "$NEW_USER"
+                /usr/sbin/usermod -aG sudo "$NEW_USER"
                 log "Added $NEW_USER to sudo group"
             fi
         else
             # Create user
-            adduser --gecos "" --disabled-password "$NEW_USER" || {
+            /usr/sbin/adduser --gecos "" --disabled-password "$NEW_USER" || {
                 error "Failed to create user $NEW_USER"
                 CREATE_USER=false
             }
             if [ $CREATE_USER = true ]; then
-                usermod -aG sudo "$NEW_USER"
+                /usr/sbin/usermod -aG sudo "$NEW_USER"
                 log "User $NEW_USER created and added to sudo group"
 
                 # Set password for new user
@@ -1480,7 +1480,7 @@ SYSTEMD_EOF
         log "Docker service enabled and started"
 
         # Ensure docker group exists
-        groupadd -f docker
+        /usr/sbin/groupadd -f docker
 
         # Fix docker.sock permissions
         sleep 1
@@ -1495,7 +1495,7 @@ SYSTEMD_EOF
 
     # Add user to docker group
     if [ -n "$DOCKER_USER" ]; then
-        usermod -aG docker "$DOCKER_USER"
+        /usr/sbin/usermod -aG docker "$DOCKER_USER"
         log "User $DOCKER_USER added to docker group"
     fi
     

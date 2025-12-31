@@ -223,13 +223,13 @@ if id "$NEW_USER" &>/dev/null; then
     fi
 else
     # Create user with disabled password initially (will be set below)
-    adduser --gecos "" --disabled-password "$NEW_USER" || {
+    /usr/sbin/adduser --gecos "" --disabled-password "$NEW_USER" || {
         error "Failed to create user $NEW_USER"
         exit 1
     }
 
     # Add to sudo group
-    usermod -aG sudo "$NEW_USER"
+    /usr/sbin/usermod -aG sudo "$NEW_USER"
     log "User $NEW_USER created and added to sudo group"
 
     # Set password for new user
@@ -1455,7 +1455,7 @@ systemctl start docker.socket
 systemctl start docker
 
 # Ensure docker group exists
-groupadd -f docker
+/usr/sbin/groupadd -f docker
 
 # Fix docker.sock permissions
 sleep 1
@@ -1466,7 +1466,7 @@ if [ -S /var/run/docker.sock ]; then
 fi
 
 # Add user to docker group
-usermod -aG docker "$DOCKER_USER"
+/usr/sbin/usermod -aG docker "$DOCKER_USER"
 log "User $DOCKER_USER added to docker group"
 
 # Verify Docker installation

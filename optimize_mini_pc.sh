@@ -425,13 +425,13 @@ if $CREATE_USER; then
         fi
     else
         # Create user with disabled password initially (will be set below)
-        adduser --gecos "" --disabled-password "$NEW_USER" || {
+        /usr/sbin/adduser --gecos "" --disabled-password "$NEW_USER" || {
             error "Failed to create user $NEW_USER"
             exit 1
         }
         
         # Add to sudo group
-        usermod -aG sudo "$NEW_USER"
+        /usr/sbin/usermod -aG sudo "$NEW_USER"
         log "User $NEW_USER created and added to sudo group"
         
         # Set password for new user
@@ -526,10 +526,10 @@ if $INSTALL_INTEL_GPU; then
     log "Installing Intel GPU Drivers..."
     safe_install intel-media-va-driver-non-free libmfx1 intel-gpu-tools vainfo mesa-utils
     
-    groupadd -f render
-    groupadd -f video
+    /usr/sbin/groupadd -f render
+    /usr/sbin/groupadd -f video
     if [ -n "$NEW_USER" ] && [ "$NEW_USER" != "root" ]; then
-        usermod -aG video,render "$NEW_USER"
+        /usr/sbin/usermod -aG video,render "$NEW_USER"
         log "Added $NEW_USER to video/render groups."
     fi
 fi
@@ -1160,7 +1160,7 @@ EOF
     systemctl enable docker
     systemctl start docker
     
-    [ -n "$NEW_USER" ] && usermod -aG docker "$NEW_USER"
+    [ -n "$NEW_USER" ] && /usr/sbin/usermod -aG docker "$NEW_USER"
 fi
 
 ################################################################################
