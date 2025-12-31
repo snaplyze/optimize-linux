@@ -1290,17 +1290,31 @@ if $PERFORMANCE_TUNING; then
         sed -i '/\/swapfile/d' /etc/fstab
     fi
 
-    log "Creating ${SWAP_SIZE}GB Swap..."
-    if ! /usr/bin/fallocate -l ${SWAP_SIZE}G /swapfile 2>/dev/null; then
-        dd if=/dev/zero of=/swapfile bs=1G count=$SWAP_SIZE status=progress
-    fi
+    # Check if remaining swap (from partitions or other sources) is sufficient
+    # We use awk to sum up total existing swap bytes
+    EXISTING_SWAP_BYTES=$(/usr/sbin/swapon --show --noheadings --bytes 2>/dev/null | awk '{sum+=$3} END {print sum}')
+    # Default to 0 if command fails or empty
+    EXISTING_SWAP_BYTES=${EXISTING_SWAP_BYTES:-0}
     
-    chmod 600 /swapfile
-    /usr/sbin/mkswap /swapfile
-    /usr/sbin/swapon /swapfile
+    # Calculate desired size in bytes (SWAP_SIZE is in GB)
+    REQUIRED_BYTES=$((SWAP_SIZE * 1024 * 1024 * 1024))
     
-    if ! grep -q "/swapfile" /etc/fstab; then
-        echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    if [ "$EXISTING_SWAP_BYTES" -ge "$REQUIRED_BYTES" ]; then
+        EXISTING_GB=$(LC_NUMERIC=C awk "BEGIN {printf \"%.1f\", $EXISTING_SWAP_BYTES/1024/1024/1024}")
+        log "Sufficient existing swap detected (${EXISTING_GB}GB >= ${SWAP_SIZE}GB). Skipping /swapfile creation."
+    else
+        log "Creating ${SWAP_SIZE}GB Swap..."
+        if ! /usr/bin/fallocate -l ${SWAP_SIZE}G /swapfile 2>/dev/null; then
+            dd if=/dev/zero of=/swapfile bs=1G count=$SWAP_SIZE status=progress
+        fi
+        
+        chmod 600 /swapfile
+        /usr/sbin/mkswap /swapfile
+        /usr/sbin/swapon /swapfile
+        
+        if ! grep -q "/swapfile" /etc/fstab; then
+            echo '/swapfile none swap sw 0 0' >> /etc/fstab
+        fi
     fi
 
     # Ensure /etc/sysctl.conf exists
