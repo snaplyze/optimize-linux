@@ -1439,7 +1439,6 @@ net.ipv4.conf.default.accept_redirects = 0
 
 EOF
 
-EOF
     
     # Fix IRQ Storm on JasperLake/N5095 (High CPU usage on one core)
     log "Applying blacklist for problematic drivers (IRQ Storm Fix)..."
