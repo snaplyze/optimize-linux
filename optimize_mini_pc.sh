@@ -274,7 +274,7 @@ if $UPDATE_SYSTEM; then
         safe_install wget curl git htop iotop sysstat net-tools \
             iptables ufw fail2ban unattended-upgrades apt-listchanges \
             zip unzip gnupg ca-certificates lsb-release \
-            lm-sensors cpufrequtils speedtest-cli \
+            lm-sensors cpufrequtils speedtest-cli irqbalance \
             fzf ripgrep fd-find bat bc needrestart ncdu tree vim nano tmux \
             make gcc g++ cmake xz-utils xdg-user-dirs
             
