@@ -1534,6 +1534,11 @@ if $INSTALL_SAMBA; then
         warn "Directory /mnt/ssd does not exist! Skipping Samba configuration."
         warn "Please mount your drive to /mnt/ssd and configure Samba manually later."
     else
+        # Fix permissions for the share directory
+        log "Setting permissions for /mnt/ssd to user $NEW_USER..."
+        chown -R "$NEW_USER:$NEW_USER" /mnt/ssd
+        chmod -R 755 /mnt/ssd
+        
         safe_install samba
         
         # Backup config
