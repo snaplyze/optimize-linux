@@ -1539,6 +1539,10 @@ if $INSTALL_SAMBA; then
         # Backup config
         [ ! -f /etc/samba/smb.conf.bak ] && cp /etc/samba/smb.conf /etc/samba/smb.conf.bak
         
+        # Disable default [homes] share to avoid clutter
+        sed -i 's/^\[homes\]/;\[homes\]/g' /etc/samba/smb.conf
+        sed -i 's/^   read only = yes/;   read only = yes/g' /etc/samba/smb.conf
+        
         # Add share if not exists (simple check)
         if ! grep -q "\[$SAMBA_SHARE_NAME\]" /etc/samba/smb.conf; then
             cat >> /etc/samba/smb.conf <<EOF
