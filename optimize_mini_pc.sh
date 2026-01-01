@@ -1503,7 +1503,6 @@ if $CONFIGURE_SECURITY; then
     /usr/sbin/ufw allow 22/tcp
     /usr/sbin/ufw allow 80/tcp
     /usr/sbin/ufw allow 443/tcp
-    $INSTALL_SAMBA && /usr/sbin/ufw allow samba
     /usr/sbin/ufw --force enable
     
     # Fail2Ban
@@ -1569,6 +1568,12 @@ EOF
         
         systemctl restart smbd
         log "Samba service restarted."
+        
+        # Enable firewall rule for Samba (now that package is installed and profile exists)
+        if command -v /usr/sbin/ufw &> /dev/null; then
+            /usr/sbin/ufw allow Samba
+            log "Firewall rules updated for Samba."
+        fi
     fi
 fi
 
