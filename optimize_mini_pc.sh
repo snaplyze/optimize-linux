@@ -1439,6 +1439,21 @@ net.ipv4.conf.default.accept_redirects = 0
 
 EOF
 
+EOF
+    
+    # Fix IRQ Storm on JasperLake/N5095 (High CPU usage on one core)
+    log "Applying blacklist for problematic drivers (IRQ Storm Fix)..."
+    cat > /etc/modprobe.d/blacklist-minipc.conf <<EOF
+# Fix for high single-core CPU usage (IRQ Storm) on Intel N5095/JasperLake
+# Disables HDMI Audio and Low-Power DMA which cause excessive interrupts
+blacklist snd_hda_intel
+blacklist snd_hda_codec_hdmi
+blacklist idma64
+blacklist i2c_designware_core
+blacklist i2c_designware_platform
+EOF
+    log "Driver blacklist applied. Will take effect after reboot."
+
     # Apply sysctl settings
     # Apply sysctl settings with error tolerance for missing parameters
     /usr/sbin/sysctl -e -p /etc/sysctl.d/99-minipc.conf 2>&1 | grep -v "cannot stat" | grep -v "No such file or directory" | grep -v "unknown key" || true
