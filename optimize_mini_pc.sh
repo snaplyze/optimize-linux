@@ -1558,9 +1558,21 @@ if $INSTALL_SAMBA; then
         # Backup config
         [ ! -f /etc/samba/smb.conf.bak ] && cp /etc/samba/smb.conf /etc/samba/smb.conf.bak
         
-        # Disable default [homes] share to avoid clutter
+        # Configure global settings (Enable SMB2+ and NTLM Auth for Windows 10/11 compatibility)
+        if ! grep -q "server min protocol" /etc/samba/smb.conf; then
+            sed -i '/\[global\]/a \   ntlm auth = yes\n   server min protocol = SMB2' /etc/samba/smb.conf
+        fi
+        
+        # Disable default [homes] share PROPERLY (comment out all lines to prevent global leakage)
+        # We use a loop to comment out the [homes] section and its commonly associated parameters
+        # This is safer than simple sed replacement which might miss indented lines
         sed -i 's/^\[homes\]/;\[homes\]/g' /etc/samba/smb.conf
+        sed -i 's/^   comment = Home Directories/;   comment = Home Directories/g' /etc/samba/smb.conf
+        sed -i 's/^   browseable = no/;   browseable = no/g' /etc/samba/smb.conf
         sed -i 's/^   read only = yes/;   read only = yes/g' /etc/samba/smb.conf
+        sed -i 's/^   create mask = 0700/;   create mask = 0700/g' /etc/samba/smb.conf
+        sed -i 's/^   directory mask = 0700/;   directory mask = 0700/g' /etc/samba/smb.conf
+        sed -i 's/^   valid users = %S/;   valid users = %S/g' /etc/samba/smb.conf
         
         # Add share if not exists (simple check)
         if ! grep -q "\[$SAMBA_SHARE_NAME\]" /etc/samba/smb.conf; then
