@@ -403,6 +403,7 @@ if $INSTALL_BASE_UTILS; then
         "xdg-user-dirs"
         "fastfetch"
         "bc"
+        "file"
     )
     
     safe_install "${base_packages[@]}"
@@ -1713,12 +1714,13 @@ if $INSTALL_NVIDIA; then
                     # Check if file is a valid deb package (should be at least 1KB)
                     if [[ $file_size -gt 1024 ]]; then
                         # Verify it's actually a .deb file
-                        if file "$CUDA_KEYRING_PATH" | grep -q "Debian"; then
+                        if dpkg --info "$CUDA_KEYRING_PATH" >/dev/null 2>&1; then
                             log "✓ File downloaded successfully and verified"
                             download_success=true
                             break
                         else
                             warn "Downloaded file is not a valid Debian package"
+                            warn "File content check: $(head -c 100 "$CUDA_KEYRING_PATH" 2>/dev/null | od -A x -t x1z -v | head -2)"
                             rm -f "$CUDA_KEYRING_PATH"
                         fi
                     else
