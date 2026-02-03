@@ -1669,7 +1669,7 @@ if $INSTALL_NVIDIA; then
         CUDA_ARCH="x86_64"  # NVIDIA uses x86_64 in repository paths, not amd64!
         CUDA_REPO_PATH="${CUDA_DISTRO}/x86_64"
 
-        log "CUDA repository: $CUDA_DISTRO/$CUDA_ARCH (path: ${CUDA_DISTRO}/x86_64)"
+        log "CUDA repository: $CUDA_DISTRO/$CUDA_ARCH"
 
         # Enable contrib repository (required for Debian)
         log "Enabling contrib repository (required for Debian)..."
@@ -1788,6 +1788,69 @@ if $INSTALL_NVIDIA; then
             warn "No CUDA packages available in repository"
             log "Repository: https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/"
             log "Try running: apt-cache search cuda"
+
+        # Configure CUDA environment variables
+        if [ -d "/usr/local/cuda" ]; then
+            log "Configuring CUDA environment variables..."
+
+            # Create system-wide CUDA environment file
+            cat > /etc/profile.d/cuda.sh <<'CUDAEOF'
+# CUDA Toolkit Environment
+# Automatically configured by WSL2 optimization script
+export PATH=/usr/local/cuda/bin:$PATH
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+export CUDA_HOME=/usr/local/cuda
+CUDAEOF
+            chmod +x /etc/profile.d/cuda.sh
+            log "✓ Created /etc/profile.d/cuda.sh"
+
+            # Function to add CUDA to user's .zshrc
+            add_cuda_to_zshrc() {
+                local zshrc_path=$1
+                if [ -f "$zshrc_path" ]; then
+                    if ! grep -q "cuda/bin" "$zshrc_path"; then
+                        cat >> "$zshrc_path" <<'ZSHCUDA'
+
+# CUDA Toolkit environment
+export PATH=/usr/local/cuda/bin:$PATH
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+export CUDA_HOME=/usr/local/cuda
+ZSHCUDA
+                        log "✓ Added CUDA configuration to $zshrc_path"
+                    fi
+                fi
+            }
+
+            # Add to root's .zshrc
+            add_cuda_to_zshrc "/root/.zshrc"
+
+            # Add to regular user's .zshrc if exists
+            if [ -n "$NEW_USER" ] && [ "$NEW_USER" != "root" ]; then
+                user_home=$(eval echo ~$NEW_USER)
+                add_cuda_to_zshrc "$user_home/.zshrc"
+            fi
+
+            # Add to docker user's .zshrc if different
+            if [ -n "$DOCKER_USER" ] && [ "$DOCKER_USER" != "root" ] && [ "$DOCKER_USER" != "$NEW_USER" ]; then
+                user_home=$(eval echo ~$DOCKER_USER)
+                add_cuda_to_zshrc "$user_home/.zshrc"
+            fi
+
+            # Verify CUDA installation
+            if [ -f "/usr/local/cuda/bin/nvcc" ]; then
+                CUDA_VERSION=$(/usr/local/cuda/bin/nvcc --version 2>/dev/null | grep "release" | awk '{print $5}' | sed 's/,//')
+                log "✓ CUDA Compiler (nvcc) installed: version $CUDA_VERSION"
+                log "✓ CUDA installation successful!"
+                info "Run 'source /etc/profile.d/cuda.sh' or start a new terminal to use CUDA"
+            else
+                warn "CUDA compiler (nvcc) not found in /usr/local/cuda/bin"
+                info "CUDA may not be fully installed. Check with: apt list --installed | grep cuda"
+            fi
+        else
+            warn "/usr/local/cuda directory not found"
+            warn "CUDA packages may have been installed but symlink not created"
+            info "Check available CUDA versions: ls -la /usr/local/ | grep cuda"
+        fi
         fi
     fi
     
