@@ -5,7 +5,7 @@ export LC_ALL=C
 export LANG=C
 
 ################################################################################
-# WSL2 Optimization Script for Debian 12/13 (Bookworm/Trixie)
+# WSL2 Optimization Script for Debian 13 (Trixie)
 # Purpose: Complete WSL2 optimization with modern Zsh + Starship setup
 # Features: WSL2-specific configs, systemd, Docker, NVIDIA/CUDA support, performance tuning
 ################################################################################
@@ -151,7 +151,7 @@ if ! is_wsl; then
     fi
 fi
 
-log "=== Starting WSL2 Optimization for Debian 12/13 ==="
+log "=== Starting WSL2 Optimization for Debian 13 (Trixie) ==="
 
 ################################################################################
 # 1. Detect OS Version
@@ -176,13 +176,16 @@ if [[ ! "$ID" =~ ^(debian|ubuntu)$ ]]; then
     exit 1
 fi
 
-# Validate Debian version (support Debian 11, 12, 13 and Ubuntu 20.04+)
+# Validate Debian version (Debian 13 only, Ubuntu 20.04+)
 case "$ID" in
     debian)
-        if [[ ! "$VERSION_ID" =~ ^(11|12|13)$ ]]; then
-            warn "This script is optimized for Debian 11-13. Detected: Debian $VERSION_ID"
-            warn "Continuing anyway, but some features may not work correctly."
+        if [[ "$VERSION_ID" != "13" ]]; then
+            error "This script is designed for Debian 13 (Trixie) only."
+            error "Detected: Debian $VERSION_ID"
+            error "Please use official Debian 13 WSL2 image from Microsoft Store."
+            exit 1
         fi
+        log "✓ Debian 13 (Trixie) confirmed - officially supported"
         ;;
     ubuntu)
         if (( $(echo "$VERSION_ID < 20.04" | bc -l) )); then
@@ -247,7 +250,7 @@ show_menu() {
 
     echo ""
     # Shell and development
-    prompt_yn "Install Zsh + Starship (replaces Fish)" true && INSTALL_ZSH=true || INSTALL_ZSH=false
+    prompt_yn "Install Zsh + Starship" true && INSTALL_ZSH=true || INSTALL_ZSH=false
     prompt_yn "Configure ssh-agent" true && CONFIGURE_SSH_AGENT=true || CONFIGURE_SSH_AGENT=false
 
     echo ""
@@ -395,9 +398,8 @@ if $INSTALL_BASE_UTILS; then
         "gnupg"
         "ca-certificates"
         "lsb-release"
-        "apt-transport-https"
         "xdg-user-dirs"
-        # "fastfetch"  # Commented out - may not be available in Debian 13
+        "fastfetch"
         "bc"
     )
     
@@ -1658,25 +1660,62 @@ if $INSTALL_NVIDIA; then
     if $INSTALL_CUDA; then
         log "Installing CUDA Toolkit..."
 
-        # Add CUDA repository
-        CUDA_REPO_PATH="debian13/x86_64"
-        if ! curl -fsI "https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/" >/dev/null 2>&1; then
-            log "CUDA repo for debian13 unavailable, using debian12"
-            CUDA_REPO_PATH="debian12/x86_64"
-        fi
+        # Add CUDA repository (Official NVIDIA method for Debian 13)
+        # Reference: NVIDIA CUDA Installation Guide, section 4.9
+        log "Configuring CUDA repository for Debian 13 (Trixie)..."
 
-        CUDA_KEY_URL="https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/3bf863cc.pub"
-        if curl -fsSL "$CUDA_KEY_URL" | gpg --dearmor -o /usr/share/keyrings/cuda-archive-keyring.gpg 2>/dev/null; then
-            log "CUDA GPG key imported"
+        CUDA_DISTRO="debian13"
+        CUDA_ARCH="amd64"
+
+        log "CUDA repository: $CUDA_DISTRO/$CUDA_ARCH"
+
+        # Enable contrib repository (required for Debian - section 4.9.1)
+        log "Enabling contrib repository (required for Debian)..."
+        if ! grep -qE "^deb .* contrib" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
+            if command -v add-apt-repository >/dev/null 2>&1; then
+                add-apt-repository contrib -y 2>&1 | tee -a "$LOG_FILE" || {
+                    warn "add-apt-repository failed, trying alternative method..."
+                    sed -i 's/ main$/ main contrib/' /etc/apt/sources.list 2>/dev/null || true
+                    sed -i 's/ main / main contrib /' /etc/apt/sources.list 2>/dev/null || true
+                }
+            else
+                sed -i 's/ main$/ main contrib/' /etc/apt/sources.list 2>/dev/null || true
+                sed -i 's/ main / main contrib /' /etc/apt/sources.list 2>/dev/null || true
+            fi
+            log "✓ contrib repository enabled"
         else
-            warn "Failed to import CUDA GPG key, continuing anyway..."
+            log "✓ contrib repository already enabled"
         fi
 
-        echo "deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/ /" | \
-            tee /etc/apt/sources.list.d/cuda-${CUDA_REPO_PATH//\//-}.list > /dev/null
+        # Install cuda-keyring package (official method - section 4.9.3)
+        CUDA_KEYRING_DEB="cuda-keyring_1.1-1_all.deb"
+        CUDA_KEYRING_URL="https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DISTRO}/${CUDA_ARCH}/${CUDA_KEYRING_DEB}"
 
-        log "Updating package list for CUDA repository..."
-        apt-get update >/dev/null 2>&1 || warn "Failed to update package list"
+        log "Downloading CUDA keyring package..."
+        log "URL: $CUDA_KEYRING_URL"
+
+        if wget -q --show-progress "$CUDA_KEYRING_URL" -O "/tmp/${CUDA_KEYRING_DEB}" 2>&1 | tee -a "$LOG_FILE"; then
+            log "Installing CUDA keyring package..."
+            if dpkg -i "/tmp/${CUDA_KEYRING_DEB}" 2>&1 | tee -a "$LOG_FILE"; then
+                log "✓ CUDA keyring installed successfully"
+            else
+                error "Failed to install CUDA keyring package"
+                warn "CUDA installation will likely fail"
+            fi
+            rm -f "/tmp/${CUDA_KEYRING_DEB}"
+        else
+            error "Failed to download CUDA keyring"
+            warn "URL: $CUDA_KEYRING_URL"
+            warn "Check internet connection and repository availability"
+        fi
+
+        log "Updating APT repository cache..."
+        if apt-get update 2>&1 | tee -a "$LOG_FILE"; then
+            log "✓ APT cache updated successfully"
+        else
+            warn "Failed to update package list"
+            log "Repository: https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DISTRO}/${CUDA_ARCH}/"
+        fi
 
         # Install CUDA packages
         # Try to install cuda-toolkit metapackage first, fall back to individual components
