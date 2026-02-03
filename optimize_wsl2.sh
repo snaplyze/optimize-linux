@@ -5,7 +5,7 @@ export LC_ALL=C
 export LANG=C
 
 ################################################################################
-# WSL2 Optimization Script for Debian 12/13 (Bookworm/Trixie)
+# WSL2 Optimization Script for Debian 13 (Trixie)
 # Purpose: Complete WSL2 optimization with modern Zsh + Starship setup
 # Features: WSL2-specific configs, systemd, Docker, NVIDIA/CUDA support, performance tuning
 ################################################################################
@@ -151,7 +151,7 @@ if ! is_wsl; then
     fi
 fi
 
-log "=== Starting WSL2 Optimization for Debian 12/13 ==="
+log "=== Starting WSL2 Optimization for Debian 13 (Trixie) ==="
 
 ################################################################################
 # 1. Detect OS Version
@@ -176,13 +176,16 @@ if [[ ! "$ID" =~ ^(debian|ubuntu)$ ]]; then
     exit 1
 fi
 
-# Validate Debian version (support Debian 11, 12, 13 and Ubuntu 20.04+)
+# Validate Debian version (Debian 13 only, Ubuntu 20.04+)
 case "$ID" in
     debian)
-        if [[ ! "$VERSION_ID" =~ ^(11|12|13)$ ]]; then
-            warn "This script is optimized for Debian 11-13. Detected: Debian $VERSION_ID"
-            warn "Continuing anyway, but some features may not work correctly."
+        if [[ "$VERSION_ID" != "13" ]]; then
+            error "This script is designed for Debian 13 (Trixie) only."
+            error "Detected: Debian $VERSION_ID"
+            error "Please use official Debian 13 WSL2 image from Microsoft Store."
+            exit 1
         fi
+        log "✓ Debian 13 (Trixie) confirmed"
         ;;
     ubuntu)
         if (( $(echo "$VERSION_ID < 20.04" | bc -l) )); then
@@ -209,6 +212,7 @@ INSTALL_CUDA=false
 CONFIGURE_SSH_AGENT=true
 ENABLE_AUTO_UPDATES=true
 PERFORMANCE_TUNING=true
+CONFIGURE_JOURNALD=true
 
 # Interactive menu
 show_menu() {
@@ -247,7 +251,7 @@ show_menu() {
 
     echo ""
     # Shell and development
-    prompt_yn "Install Zsh + Starship (replaces Fish)" true && INSTALL_ZSH=true || INSTALL_ZSH=false
+    prompt_yn "Install Zsh + Starship" true && INSTALL_ZSH=true || INSTALL_ZSH=false
     prompt_yn "Configure ssh-agent" true && CONFIGURE_SSH_AGENT=true || CONFIGURE_SSH_AGENT=false
 
     echo ""
@@ -269,6 +273,7 @@ show_menu() {
     # System optimization
     prompt_yn "Enable automatic security updates" true && ENABLE_AUTO_UPDATES=true || ENABLE_AUTO_UPDATES=false
     prompt_yn "Apply performance tuning" true && PERFORMANCE_TUNING=true || PERFORMANCE_TUNING=false
+    prompt_yn "Configure systemd-journald limits (100MB disk + 50MB RAM)" true && CONFIGURE_JOURNALD=true || CONFIGURE_JOURNALD=false
 
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
@@ -395,9 +400,8 @@ if $INSTALL_BASE_UTILS; then
         "gnupg"
         "ca-certificates"
         "lsb-release"
-        "apt-transport-https"
         "xdg-user-dirs"
-        # "fastfetch"  # Commented out - may not be available in Debian 13
+        "fastfetch"
         "bc"
     )
     
@@ -1658,133 +1662,136 @@ if $INSTALL_NVIDIA; then
     if $INSTALL_CUDA; then
         log "Installing CUDA Toolkit..."
 
-        # ═══════════════════════════════════════════════════════════════════════
-        # NVIDIA CUDA installation for Debian 13 (FIXED for x86_64 architecture)
-        # Uses cuda-keyring method (recommended by NVIDIA official documentation)
-        # ═══════════════════════════════════════════════════════════════════════
+        # Add CUDA repository (Official NVIDIA method for Debian 13)
+        log "Configuring CUDA repository for Debian 13 (Trixie)..."
 
         CUDA_DISTRO="debian13"
-        CUDA_ARCH="x86_64"  # ✅ NVIDIA uses x86_64 in repository paths, not amd64!
-        CUDA_KEYRING_URL="https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DISTRO}/${CUDA_ARCH}/cuda-keyring_1.1-1_all.deb"
-        CUDA_KEYRING_FILE="/tmp/cuda-keyring.deb"
+        CUDA_ARCH="x86_64"  # NVIDIA uses x86_64 in repository paths, not amd64!
+        CUDA_REPO_PATH="${CUDA_DISTRO}/x86_64"
 
-        # Download cuda-keyring with retries
-        log "Downloading CUDA keyring package..."
-        retry_count=0
-        max_retries=3
-        download_success=false
+        log "CUDA repository: $CUDA_DISTRO/$CUDA_ARCH (path: ${CUDA_DISTRO}/x86_64)"
 
-        while [ $retry_count -lt $max_retries ]; do
-            if curl -fsSL "$CUDA_KEYRING_URL" -o "$CUDA_KEYRING_FILE"; then
-                log "CUDA keyring downloaded successfully"
-                download_success=true
-                break
+        # Enable contrib repository (required for Debian)
+        log "Enabling contrib repository (required for Debian)..."
+        if ! grep -qE "^deb .* contrib" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
+            if command -v add-apt-repository >/dev/null 2>&1; then
+                add-apt-repository contrib -y 2>&1 | tee -a "$LOG_FILE" || {
+                    warn "add-apt-repository failed, trying alternative method..."
+                    sed -i 's/ main$/ main contrib/' /etc/apt/sources.list 2>/dev/null || true
+                    sed -i 's/ main / main contrib /' /etc/apt/sources.list 2>/dev/null || true
+                }
+            else
+                sed -i 's/ main$/ main contrib/' /etc/apt/sources.list 2>/dev/null || true
+                sed -i 's/ main / main contrib /' /etc/apt/sources.list 2>/dev/null || true
             fi
-            retry_count=$((retry_count + 1))
-            if [ $retry_count -lt $max_retries ]; then
-                warn "Download failed, retrying... ($retry_count/$max_retries)"
-                sleep 2
+            log "✓ contrib repository enabled"
+        else
+            log "✓ contrib repository already enabled"
+        fi
+
+        # Install cuda-keyring package (official method with robust error handling)
+        CUDA_KEYRING_DEB="cuda-keyring_1.1-1_all.deb"
+        CUDA_KEYRING_URL="https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DISTRO}/${CUDA_ARCH}/${CUDA_KEYRING_DEB}"
+        CUDA_KEYRING_PATH="/tmp/${CUDA_KEYRING_DEB}"
+
+        log "Downloading CUDA keyring package..."
+        log "URL: $CUDA_KEYRING_URL"
+
+        # Clean up any existing file
+        rm -f "$CUDA_KEYRING_PATH"
+
+        # Download with retry logic
+        download_success=false
+        for attempt in 1 2 3; do
+            log "Download attempt $attempt/3..."
+            if wget --timeout=30 --tries=3 -q --show-progress "$CUDA_KEYRING_URL" -O "$CUDA_KEYRING_PATH" 2>&1 | tee -a "$LOG_FILE"; then
+                # Verify file was downloaded and is not empty
+                if [[ -f "$CUDA_KEYRING_PATH" ]] && [[ -s "$CUDA_KEYRING_PATH" ]]; then
+                    file_size=$(stat -f%z "$CUDA_KEYRING_PATH" 2>/dev/null || stat -c%s "$CUDA_KEYRING_PATH" 2>/dev/null)
+                    log "Downloaded file size: ${file_size} bytes"
+
+                    # Check if file is a valid deb package (should be at least 1KB)
+                    if [[ $file_size -gt 1024 ]]; then
+                        # Verify it's actually a .deb file
+                        if file "$CUDA_KEYRING_PATH" | grep -q "Debian"; then
+                            log "✓ File downloaded successfully and verified"
+                            download_success=true
+                            break
+                        else
+                            warn "Downloaded file is not a valid Debian package"
+                            rm -f "$CUDA_KEYRING_PATH"
+                        fi
+                    else
+                        warn "Downloaded file is too small (${file_size} bytes)"
+                        rm -f "$CUDA_KEYRING_PATH"
+                    fi
+                else
+                    warn "Downloaded file is missing or empty"
+                fi
+            else
+                warn "wget failed with exit code $?"
+            fi
+
+            if [[ $attempt -lt 3 ]]; then
+                warn "Retrying in 3 seconds..."
+                sleep 3
             fi
         done
 
-        if [ "$download_success" = false ]; then
-            error "Failed to download CUDA keyring after $max_retries attempts"
-            error "URL: $CUDA_KEYRING_URL"
-            warn "CUDA installation will be skipped"
-        fi
+        if [[ "$download_success" == "true" ]]; then
+            log "Installing CUDA keyring package..."
+            if dpkg -i "$CUDA_KEYRING_PATH" 2>&1 | tee -a "$LOG_FILE"; then
+                log "✓ CUDA keyring installed successfully"
+                rm -f "$CUDA_KEYRING_PATH"
 
-        # Install cuda-keyring if downloaded successfully
-        if [ -f "$CUDA_KEYRING_FILE" ] && [ "$download_success" = true ]; then
-            log "Installing CUDA keyring..."
-            if dpkg -i "$CUDA_KEYRING_FILE"; then
-                log "CUDA keyring installed successfully"
-                rm -f "$CUDA_KEYRING_FILE"
-
-                # Update package list
-                log "Updating package list for CUDA repository..."
-                apt-get update >/dev/null 2>&1 || warn "Warning: Failed to update package list"
-
-                # Check available CUDA versions
-                log "Checking available CUDA packages..."
-                available_cuda=$(apt-cache search '^cuda-toolkit' 2>/dev/null | grep -E 'cuda-toolkit-[0-9]+-[0-9]+' | head -5)
-                if [ -n "$available_cuda" ]; then
-                    log "Available CUDA toolkit versions:"
-                    echo "$available_cuda" | tee -a "$LOG_FILE"
-                fi
-
-                # Try to install latest CUDA toolkit
-                cuda_installed=false
-                for cuda_package in "cuda-toolkit-13-1" "cuda-toolkit-13-0" "cuda-toolkit-12-6" "cuda-toolkit"; do
-                    if apt-cache show "$cuda_package" >/dev/null 2>&1; then
-                        log "Installing $cuda_package..."
-                        if safe_install "$cuda_package"; then
-                            log "CUDA Toolkit installed successfully: $cuda_package"
-                            cuda_installed=true
-                            break
-                        else
-                            warn "Failed to install $cuda_package, trying next..."
-                        fi
-                    fi
-                done
-
-                if [ "$cuda_installed" = false ]; then
-                    warn "Could not install CUDA toolkit package"
-                    warn "You can manually install with: sudo apt install cuda-toolkit-13-1"
-                fi
-
-                # Add CUDA to PATH
-                if [ -d "/usr/local/cuda" ]; then
-                    log "Configuring CUDA environment variables..."
-                    cat > /etc/profile.d/cuda.sh <<'CUDAEOF'
-# CUDA Toolkit Environment
-export PATH=/usr/local/cuda/bin:$PATH
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-CUDAEOF
-                    chmod +x /etc/profile.d/cuda.sh
-
-                    # Also add to Zsh configs
-                    add_cuda_to_zshrc() {
-                        local zshrc_path=$1
-                        if [ -f "$zshrc_path" ]; then
-                            if ! grep -q "cuda/bin" "$zshrc_path"; then
-                                cat >> "$zshrc_path" <<'ZSHCUDA'
-
-# CUDA Toolkit environment
-export PATH=/usr/local/cuda/bin:$PATH
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-ZSHCUDA
-                                log "Added CUDA configuration to $zshrc_path"
-                            fi
-                        fi
-                    }
-
-                    add_cuda_to_zshrc "/root/.zshrc"
-                    if [ -n "$NEW_USER" ] && [ "$NEW_USER" != "root" ]; then
-                        user_home=$(eval echo ~$NEW_USER)
-                        add_cuda_to_zshrc "$user_home/.zshrc"
-                    fi
-
-                    # Verify CUDA installation
-                    if [ -f "/usr/local/cuda/bin/nvcc" ]; then
-                        CUDA_VERSION=$(/usr/local/cuda/bin/nvcc --version 2>/dev/null | grep "release" | awk '{print $5}' | sed 's/,//')
-                        log "CUDA Compiler (nvcc) installed: version $CUDA_VERSION"
-                    else
-                        warn "CUDA compiler (nvcc) not found in /usr/local/cuda/bin"
-                        info "You may need to logout/login or run: source /etc/profile.d/cuda.sh"
-                    fi
+                log "Updating APT repository cache..."
+                if apt-get update 2>&1 | tee -a "$LOG_FILE"; then
+                    log "✓ APT cache updated successfully"
                 else
-                    warn "CUDA directory /usr/local/cuda not found"
-                    warn "CUDA installation may not be complete"
+                    warn "Failed to update package list after adding CUDA repository"
                 fi
             else
-                error "Failed to install CUDA keyring package"
-                rm -f "$CUDA_KEYRING_FILE"
+                error "Failed to install CUDA keyring package (dpkg returned $?)"
+                rm -f "$CUDA_KEYRING_PATH"
+                warn "CUDA installation will be skipped"
+                INSTALL_CUDA=false
             fi
         else
-            warn "CUDA keyring file not available, skipping CUDA installation"
+            error "Failed to download CUDA keyring after 3 attempts"
+            error "URL: $CUDA_KEYRING_URL"
+            warn "Please check:"
+            warn "  1. Internet connection"
+            warn "  2. Repository availability"
+            warn "  3. DNS resolution"
+            warn "CUDA installation will be skipped"
+            INSTALL_CUDA=false
+        fi
+
+        # Install CUDA packages
+        # Try to install cuda-toolkit metapackage first, fall back to individual components
+        if apt-cache search cuda | grep -q "^cuda-toolkit"; then
+            log "Found cuda-toolkit metapackage, installing..."
+            safe_install cuda-toolkit 2>/dev/null || {
+                log "cuda-toolkit metapackage not available, trying cuda package..."
+                if apt-cache search "^cuda " | grep -q "^cuda "; then
+                    safe_install cuda
+                    log "CUDA Toolkit installed (cuda metapackage)"
+                else
+                    warn "No CUDA toolkit packages found - CUDA repository may not be properly configured"
+                fi
+            }
+        elif apt-cache search "^cuda " | grep -q "^cuda "; then
+            log "Installing cuda metapackage..."
+            safe_install cuda
+            log "CUDA Toolkit installed (cuda metapackage)"
+        else
+            warn "No CUDA packages available in repository"
+            log "Repository: https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/"
+            log "Try running: apt-cache search cuda"
         fi
     fi
-
+    
+else
     log "Skipping NVIDIA installation"
 fi
 
@@ -2142,8 +2149,52 @@ chmod +x /etc/cron.weekly/wsl2-cleanup
 
 log "Utility scripts created"
 
+
 ################################################################################
-# 16. Final Cleanup
+# 16. Configure systemd-journald
+################################################################################
+
+section "Step 16: Configure systemd-journald"
+
+if $CONFIGURE_JOURNALD; then
+    if has_systemd; then
+        log "Configuring systemd-journald for WSL2..."
+
+        mkdir -p /etc/systemd/journald.conf.d
+
+        cat > /etc/systemd/journald.conf.d/00-wsl2.conf <<'JOURNALD_EOF'
+[Journal]
+SystemMaxUse=100M
+SystemKeepFree=500M
+SystemMaxFileSize=10M
+SystemMaxFiles=10
+RuntimeMaxUse=50M
+RuntimeKeepFree=100M
+RuntimeMaxFileSize=10M
+RuntimeMaxFiles=5
+MaxRetentionSec=1week
+MaxFileSec=1day
+Compress=yes
+ForwardToSyslog=no
+ForwardToWall=no
+SyncIntervalSec=5m
+JOURNALD_EOF
+
+        systemctl restart systemd-journald 2>&1 | tee -a "$LOG_FILE" || warn "Failed to restart journald"
+        journalctl --vacuum-size=100M --vacuum-time=1week 2>&1 | tee -a "$LOG_FILE" || true
+
+        journal_size=$(journalctl --disk-usage 2>/dev/null | grep -oP 'Archived and active journals take up \K[^.]+' || echo "unknown")
+        log "✓ systemd-journald configured"
+        info "  Max: 100MB disk + 50MB RAM, Current: $journal_size"
+    else
+        warn "systemd not available"
+    fi
+else
+    log "Skipping systemd-journald configuration"
+fi
+
+################################################################################
+# 17. Final Cleanup
 ################################################################################
 section "Step 16: Final Cleanup"
 
