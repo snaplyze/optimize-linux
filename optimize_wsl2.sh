@@ -185,7 +185,7 @@ case "$ID" in
             error "Please use official Debian 13 WSL2 image from Microsoft Store."
             exit 1
         fi
-        log "✓ Debian 13 (Trixie) confirmed - officially supported"
+        log "✓ Debian 13 (Trixie) confirmed"
         ;;
     ubuntu)
         if (( $(echo "$VERSION_ID < 20.04" | bc -l) )); then
@@ -212,6 +212,7 @@ INSTALL_CUDA=false
 CONFIGURE_SSH_AGENT=true
 ENABLE_AUTO_UPDATES=true
 PERFORMANCE_TUNING=true
+CONFIGURE_JOURNALD=true
 
 # Interactive menu
 show_menu() {
@@ -272,6 +273,7 @@ show_menu() {
     # System optimization
     prompt_yn "Enable automatic security updates" true && ENABLE_AUTO_UPDATES=true || ENABLE_AUTO_UPDATES=false
     prompt_yn "Apply performance tuning" true && PERFORMANCE_TUNING=true || PERFORMANCE_TUNING=false
+    prompt_yn "Configure systemd-journald limits (100MB disk + 50MB RAM)" true && CONFIGURE_JOURNALD=true || CONFIGURE_JOURNALD=false
 
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
@@ -1661,15 +1663,15 @@ if $INSTALL_NVIDIA; then
         log "Installing CUDA Toolkit..."
 
         # Add CUDA repository (Official NVIDIA method for Debian 13)
-        # Reference: NVIDIA CUDA Installation Guide, section 4.9
         log "Configuring CUDA repository for Debian 13 (Trixie)..."
 
         CUDA_DISTRO="debian13"
         CUDA_ARCH="amd64"
+        CUDA_REPO_PATH="${CUDA_DISTRO}/x86_64"
 
         log "CUDA repository: $CUDA_DISTRO/$CUDA_ARCH"
 
-        # Enable contrib repository (required for Debian - section 4.9.1)
+        # Enable contrib repository (required for Debian)
         log "Enabling contrib repository (required for Debian)..."
         if ! grep -qE "^deb .* contrib" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
             if command -v add-apt-repository >/dev/null 2>&1; then
@@ -1687,13 +1689,11 @@ if $INSTALL_NVIDIA; then
             log "✓ contrib repository already enabled"
         fi
 
-        # Install cuda-keyring package (official method - section 4.9.3)
+        # Install cuda-keyring package (official method)
         CUDA_KEYRING_DEB="cuda-keyring_1.1-1_all.deb"
         CUDA_KEYRING_URL="https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DISTRO}/${CUDA_ARCH}/${CUDA_KEYRING_DEB}"
 
         log "Downloading CUDA keyring package..."
-        log "URL: $CUDA_KEYRING_URL"
-
         if wget -q --show-progress "$CUDA_KEYRING_URL" -O "/tmp/${CUDA_KEYRING_DEB}" 2>&1 | tee -a "$LOG_FILE"; then
             log "Installing CUDA keyring package..."
             if dpkg -i "/tmp/${CUDA_KEYRING_DEB}" 2>&1 | tee -a "$LOG_FILE"; then
@@ -1704,8 +1704,7 @@ if $INSTALL_NVIDIA; then
             fi
             rm -f "/tmp/${CUDA_KEYRING_DEB}"
         else
-            error "Failed to download CUDA keyring"
-            warn "URL: $CUDA_KEYRING_URL"
+            error "Failed to download CUDA keyring from: $CUDA_KEYRING_URL"
             warn "Check internet connection and repository availability"
         fi
 
@@ -1714,7 +1713,6 @@ if $INSTALL_NVIDIA; then
             log "✓ APT cache updated successfully"
         else
             warn "Failed to update package list"
-            log "Repository: https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DISTRO}/${CUDA_ARCH}/"
         fi
 
         # Install CUDA packages
@@ -2099,8 +2097,71 @@ chmod +x /etc/cron.weekly/wsl2-cleanup
 
 log "Utility scripts created"
 
+
 ################################################################################
-# 16. Final Cleanup
+# 16. Configure systemd-journald
+################################################################################
+
+section "Step 16: Configure systemd-journald"
+
+if $CONFIGURE_JOURNALD; then
+    if has_systemd; then
+        log "Configuring systemd-journald for WSL2..."
+
+        # Create journald config directory
+        mkdir -p /etc/systemd/journald.conf.d
+
+        # Configure journald limits for WSL2
+        cat > /etc/systemd/journald.conf.d/00-wsl2.conf <<'JOURNALD_EOF'
+[Journal]
+# Persistent storage limits (disk) - WSL2 optimized
+SystemMaxUse=100M
+SystemKeepFree=500M
+SystemMaxFileSize=10M
+SystemMaxFiles=10
+
+# Volatile storage limits (RAM) - WSL2 optimized
+RuntimeMaxUse=50M
+RuntimeKeepFree=100M
+RuntimeMaxFileSize=10M
+RuntimeMaxFiles=5
+
+# Retention policy - keep logs for 1 week
+MaxRetentionSec=1week
+MaxFileSec=1day
+
+# Compression to save space
+Compress=yes
+
+# Disable unnecessary forwarding (WSL2 doesn't need syslog)
+ForwardToSyslog=no
+ForwardToWall=no
+
+# Sync interval (5 minutes) - reduces I/O in WSL2
+SyncIntervalSec=5m
+JOURNALD_EOF
+
+        log "Restarting systemd-journald..."
+        systemctl restart systemd-journald 2>&1 | tee -a "$LOG_FILE" || warn "Failed to restart journald"
+
+        log "Cleaning old journal entries..."
+        journalctl --vacuum-size=100M --vacuum-time=1week 2>&1 | tee -a "$LOG_FILE" || true
+
+        # Show current disk usage
+        journal_size=$(journalctl --disk-usage 2>/dev/null | grep -oP 'Archived and active journals take up \K[^.]+' || echo "unknown")
+        log "✓ systemd-journald configured"
+        info "  Max disk usage: 100MB, Max RAM usage: 50MB"
+        info "  Current journal size: $journal_size"
+        info "  Retention: 1 week, Compression: enabled"
+    else
+        warn "systemd not available, skipping journald configuration"
+    fi
+else
+    log "Skipping systemd-journald configuration"
+fi
+
+################################################################################
+# 17. Final Cleanup
 ################################################################################
 section "Step 16: Final Cleanup"
 
