@@ -188,7 +188,15 @@ case "$ID" in
         log "✓ Debian 13 (Trixie) confirmed"
         ;;
     ubuntu)
-        if (( $(echo "$VERSION_ID < 20.04" | bc -l) )); then
+        # Compare version without bc dependency (bash arithmetic)
+        version_major=${VERSION_ID%%.*}
+        version_minor=${VERSION_ID#*.}
+        version_minor=${version_minor%%.*}
+        
+        # Convert to integer for comparison (20.04 -> 2004)
+        version_num=$((version_major * 100 + version_minor))
+        
+        if [[ $version_num -lt 2004 ]]; then
             warn "This script is optimized for Ubuntu 20.04+. Detected: Ubuntu $VERSION_ID"
             warn "Continuing anyway, but some features may not work correctly."
         fi
@@ -229,10 +237,10 @@ show_menu() {
     prompt_yn() {
         local prompt="$1" default_yes="$2"; local ans
         if $default_yes; then
-            read -p " - $prompt [Y/n]: " ans
+            read -r -p " - $prompt [Y/n]: " ans
             case "$ans" in n|N) return 1;; *) return 0;; esac
         else
-            read -p " - $prompt [y/N]: " ans
+            read -r -p " - $prompt [y/N]: " ans
             case "$ans" in y|Y) return 0;; *) return 1;; esac
         fi
     }
@@ -429,7 +437,7 @@ section "Step 5: User Management"
 
 NEW_USER=""
 if $CREATE_USER; then
-    read -p "Enter new username: " NEW_USER
+    read -r -p "Enter new username: " NEW_USER
     
     if [ -z "$NEW_USER" ]; then
         warn "Username cannot be empty! Skipping user creation."
@@ -494,12 +502,12 @@ if $CREATE_USER; then
         # Only configure if user was created/configured successfully
         if [ $CREATE_USER = true ]; then
             # Configure passwordless sudo
-            echo "$NEW_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$NEW_USER
-            chmod 440 /etc/sudoers.d/$NEW_USER
+            echo "$NEW_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/"$NEW_USER"
+            chmod 440 /etc/sudoers.d/"$NEW_USER"
             log "Passwordless sudo configured for $NEW_USER"
 
             # Verify user home directory exists
-            USER_HOME=$(eval echo ~$NEW_USER)
+            USER_HOME=$(eval echo "~$NEW_USER")
             if [ ! -d "$USER_HOME" ]; then
                 warn "User home directory $USER_HOME does not exist, creating..."
                 mkdir -p "$USER_HOME"
@@ -557,7 +565,7 @@ check_dialog() {
     if check_dialog; then
         LOCALE_CHOICE=$(dialog --title "Locale Selection" --radiolist "Select locale:" 15 60 3 "1" "English (en_US.UTF-8)" on "2" "Russian (ru_RU.UTF-8)" off "3" "Both (en_US.UTF-8 + ru_RU.UTF-8)" off 3>&1 1>&2 2>&3)
     else
-        read -p "Enter choice [1-3]: " LOCALE_CHOICE
+        read -r -p "Enter choice [1-3]: " LOCALE_CHOICE
     fi
     
     case $LOCALE_CHOICE in
@@ -640,7 +648,8 @@ if $INSTALL_ZSH; then
     # Function to setup Zsh for a user
     setup_zsh_for_user() {
         local username=$1
-        local user_home=$(eval echo ~$username)
+        local user_home
+        user_home=$(eval echo "~$username")
         
         log "Setting up Zsh for user: $username"
         
@@ -1077,14 +1086,15 @@ STARSHIP
         mkdir -p "$user_home/.zsh/cache"
         
         # Set correct ownership
-        chown -R $username:$username "$user_home/.zshrc" "$user_home/.zsh" "$user_home/.config" 2>/dev/null || true
+        chown -R "$username":"$username" "$user_home/.zshrc" "$user_home/.zsh" "$user_home/.config" 2>/dev/null || true
         
         # Set correct permissions
         chmod 644 "$user_home/.zshrc" 2>/dev/null || true
         chmod 644 "$user_home/.config/starship.toml" 2>/dev/null || true
         
         # Change default shell to Zsh
-        local zsh_path=$(which zsh)
+        local zsh_path
+        zsh_path=$(which zsh)
         if [ -z "$zsh_path" ]; then
             error "Cannot find zsh binary"
             return 1
@@ -1110,12 +1120,12 @@ STARSHIP
 
     # Setup Zsh for new user if created
     if [ -n "$NEW_USER" ]; then
-        setup_zsh_for_user $NEW_USER
+        setup_zsh_for_user "$NEW_USER"
     fi
 
     # Setup Zsh for docker user
     if [ -n "$DOCKER_USER" ] && [ "$DOCKER_USER" != "root" ] && [ "$DOCKER_USER" != "$NEW_USER" ]; then
-        setup_zsh_for_user $DOCKER_USER
+        setup_zsh_for_user "$DOCKER_USER"
     fi
 
     log "Zsh + Starship configuration completed"
@@ -1138,7 +1148,6 @@ install_go() {
     local go_download_url
     local go_checksum_url
     local go_expected_checksum
-    local go_actual_checksum
     local temp_dir
 
     # Detect architecture
@@ -1176,7 +1185,7 @@ install_go() {
 
     # Create temporary directory
     temp_dir=$(mktemp -d)
-    trap "rm -rf $temp_dir" EXIT
+    trap 'rm -rf "$temp_dir"' EXIT
 
     # Download checksum
     log "Downloading Go checksum..."
@@ -1246,7 +1255,7 @@ ZSHEOF
 
     # Add to regular user's .zshrc if exists
     if [ -n "$NEW_USER" ] && $CREATE_USER; then
-        user_home=$(eval echo ~$NEW_USER)
+        user_home=$(eval echo "~$NEW_USER")
         add_go_to_zshrc "$user_home/.zshrc"
     fi
 
@@ -1271,7 +1280,8 @@ log "Installing NVM and Node.js LTS..."
 # Function to install NVM for a user
 install_nvm_for_user() {
     local username=$1
-    local user_home=$(eval echo ~$username)
+    local user_home
+    user_home=$(eval echo "~$username")
 
     log "Installing NVM for user: $username"
 
@@ -1708,7 +1718,7 @@ if $INSTALL_NVIDIA; then
             if wget --timeout=30 --tries=3 -q --show-progress "$CUDA_KEYRING_URL" -O "$CUDA_KEYRING_PATH" 2>&1 | tee -a "$LOG_FILE"; then
                 # Verify file was downloaded and is not empty
                 if [[ -f "$CUDA_KEYRING_PATH" ]] && [[ -s "$CUDA_KEYRING_PATH" ]]; then
-                    file_size=$(stat -f%z "$CUDA_KEYRING_PATH" 2>/dev/null || stat -c%s "$CUDA_KEYRING_PATH" 2>/dev/null)
+                    file_size=$(stat -c%s "$CUDA_KEYRING_PATH" 2>/dev/null)
                     log "Downloaded file size: ${file_size} bytes"
 
                     # Check if file is a valid deb package (should be at least 1KB)
@@ -1769,88 +1779,93 @@ if $INSTALL_NVIDIA; then
             INSTALL_CUDA=false
         fi
 
-        # Install CUDA packages
-        # Try to install cuda-toolkit metapackage first, fall back to individual components
-        if apt-cache search cuda | grep -q "^cuda-toolkit"; then
-            log "Found cuda-toolkit metapackage, installing..."
-            safe_install cuda-toolkit 2>/dev/null || {
-                log "cuda-toolkit metapackage not available, trying cuda package..."
-                if apt-cache search "^cuda " | grep -q "^cuda "; then
-                    safe_install cuda
-                    log "CUDA Toolkit installed (cuda metapackage)"
-                else
-                    warn "No CUDA toolkit packages found - CUDA repository may not be properly configured"
-                fi
-            }
-        elif apt-cache search "^cuda " | grep -q "^cuda "; then
-            log "Installing cuda metapackage..."
-            safe_install cuda
-            log "CUDA Toolkit installed (cuda metapackage)"
-        else
-            warn "No CUDA packages available in repository"
-            log "Repository: https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/"
-            log "Try running: apt-cache search cuda"
-        fi
+        # Install CUDA packages (only if keyring installation succeeded)
+        if $INSTALL_CUDA; then
+            # Try to install cuda-toolkit metapackage first, fall back to individual components
+            if apt-cache search cuda | grep -q "^cuda-toolkit"; then
+                log "Found cuda-toolkit metapackage, installing..."
+                safe_install cuda-toolkit 2>/dev/null || {
+                    log "cuda-toolkit metapackage not available, trying cuda package..."
+                    if apt-cache search "^cuda " | grep -q "^cuda "; then
+                        safe_install cuda
+                        log "CUDA Toolkit installed (cuda metapackage)"
+                    else
+                        warn "No CUDA toolkit packages found - CUDA repository may not be properly configured"
+                    fi
+                }
+            elif apt-cache search "^cuda " | grep -q "^cuda "; then
+                log "Installing cuda metapackage..."
+                safe_install cuda
+                log "CUDA Toolkit installed (cuda metapackage)"
+            else
+                warn "No CUDA packages available in repository"
+                log "Repository: https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/"
+                log "Try running: apt-cache search cuda"
+            fi
+        fi  # End of: if $INSTALL_CUDA (package installation check)
+    fi  # End of: if $INSTALL_CUDA
+    
+    # Configure CUDA environment variables (MOVED OUTSIDE if $INSTALL_CUDA)
+    # This runs regardless of whether we just installed CUDA or it was already installed
+    if [ -d "/usr/local/cuda" ]; then
+        log "Configuring CUDA environment variables..."
 
-        # Configure CUDA environment variables
-        if [ -d "/usr/local/cuda" ]; then
-            log "Configuring CUDA environment variables..."
-
-            # Create system-wide CUDA environment file
-            cat > /etc/profile.d/cuda.sh <<'CUDAEOF'
+        # Create system-wide CUDA environment file
+        cat > /etc/profile.d/cuda.sh <<'CUDAEOF'
 # CUDA Toolkit Environment
 # Automatically configured by WSL2 optimization script
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export CUDA_HOME=/usr/local/cuda
 CUDAEOF
-            chmod +x /etc/profile.d/cuda.sh
-            log "✓ Created /etc/profile.d/cuda.sh"
+        chmod +x /etc/profile.d/cuda.sh
+        log "✓ Created /etc/profile.d/cuda.sh"
 
-            # Function to add CUDA to user's .zshrc
-            add_cuda_to_zshrc() {
-                local zshrc_path=$1
-                if [ -f "$zshrc_path" ]; then
-                    if ! grep -q "cuda/bin" "$zshrc_path"; then
-                        cat >> "$zshrc_path" <<'ZSHCUDA'
+        # Function to add CUDA to user's .zshrc
+        add_cuda_to_zshrc() {
+            local zshrc_path=$1
+            if [ -f "$zshrc_path" ]; then
+                if ! grep -q "cuda/bin" "$zshrc_path"; then
+                    cat >> "$zshrc_path" <<'ZSHCUDA'
 
 # CUDA Toolkit environment
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export CUDA_HOME=/usr/local/cuda
 ZSHCUDA
-                        log "✓ Added CUDA configuration to $zshrc_path"
-                    fi
+                    log "✓ Added CUDA configuration to $zshrc_path"
                 fi
-            }
-
-            # Add to root's .zshrc
-            add_cuda_to_zshrc "/root/.zshrc"
-
-            # Add to regular user's .zshrc if exists
-            if [ -n "$NEW_USER" ] && [ "$NEW_USER" != "root" ]; then
-                user_home=$(eval echo ~$NEW_USER)
-                add_cuda_to_zshrc "$user_home/.zshrc"
             fi
+        }
 
-            # Add to docker user's .zshrc if different
-            if [ -n "$DOCKER_USER" ] && [ "$DOCKER_USER" != "root" ] && [ "$DOCKER_USER" != "$NEW_USER" ]; then
-                user_home=$(eval echo ~$DOCKER_USER)
-                add_cuda_to_zshrc "$user_home/.zshrc"
-            fi
+        # Add to root's .zshrc
+        add_cuda_to_zshrc "/root/.zshrc"
 
-            # Verify CUDA installation
-            if [ -f "/usr/local/cuda/bin/nvcc" ]; then
-                CUDA_VERSION=$(/usr/local/cuda/bin/nvcc --version 2>/dev/null | grep "release" | awk '{print $5}' | sed 's/,//')
-                log "✓ CUDA Compiler (nvcc) installed: version $CUDA_VERSION"
-                log "✓ CUDA installation successful!"
-                info "Run 'source /etc/profile.d/cuda.sh' or start a new terminal to use CUDA"
-            else
-                warn "CUDA compiler (nvcc) not found in /usr/local/cuda/bin"
-                info "CUDA may not be fully installed. Check with: apt list --installed | grep cuda"
-            fi
+        # Add to regular user's .zshrc if exists
+        if [ -n "$NEW_USER" ] && [ "$NEW_USER" != "root" ]; then
+            user_home=$(eval echo "~$NEW_USER")
+            add_cuda_to_zshrc "$user_home/.zshrc"
+        fi
+
+        # Add to docker user's .zshrc if different
+        if [ -n "$DOCKER_USER" ] && [ "$DOCKER_USER" != "root" ] && [ "$DOCKER_USER" != "$NEW_USER" ]; then
+            user_home=$(eval echo "~$DOCKER_USER")
+            add_cuda_to_zshrc "$user_home/.zshrc"
+        fi
+
+        # Verify CUDA installation
+        if [ -f "/usr/local/cuda/bin/nvcc" ]; then
+            CUDA_VERSION=$(/usr/local/cuda/bin/nvcc --version 2>/dev/null | grep "release" | awk '{print $5}' | sed 's/,//')
+            log "✓ CUDA Compiler (nvcc) installed: version $CUDA_VERSION"
+            log "✓ CUDA installation successful!"
+            info "Run 'source /etc/profile.d/cuda.sh' or start a new terminal to use CUDA"
         else
-            warn "/usr/local/cuda directory not found"
+            warn "CUDA compiler (nvcc) not found in /usr/local/cuda/bin"
+            info "CUDA may not be fully installed. Check with: apt list --installed | grep cuda"
+        fi
+    else
+        if $INSTALL_CUDA; then
+            warn "/usr/local/cuda directory not found after installation"
             warn "CUDA packages may have been installed but symlink not created"
             info "Check available CUDA versions: ls -la /usr/local/ | grep cuda"
         fi
