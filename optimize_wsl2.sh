@@ -1790,6 +1790,7 @@ if $INSTALL_NVIDIA; then
             warn "No CUDA packages available in repository"
             log "Repository: https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_PATH}/"
             log "Try running: apt-cache search cuda"
+        fi
 
         # Configure CUDA environment variables
         if [ -d "/usr/local/cuda" ]; then
@@ -1852,7 +1853,6 @@ ZSHCUDA
             warn "/usr/local/cuda directory not found"
             warn "CUDA packages may have been installed but symlink not created"
             info "Check available CUDA versions: ls -la /usr/local/ | grep cuda"
-        fi
         fi
     fi
     
