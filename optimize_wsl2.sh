@@ -403,7 +403,6 @@ if $INSTALL_BASE_UTILS; then
         "xdg-user-dirs"
         "fastfetch"
         "bc"
-        "file"
     )
     
     safe_install "${base_packages[@]}"
@@ -1714,13 +1713,12 @@ if $INSTALL_NVIDIA; then
                     # Check if file is a valid deb package (should be at least 1KB)
                     if [[ $file_size -gt 1024 ]]; then
                         # Verify it's actually a .deb file
-                        if dpkg --info "$CUDA_KEYRING_PATH" >/dev/null 2>&1; then
+                        if file "$CUDA_KEYRING_PATH" | grep -q "Debian"; then
                             log "✓ File downloaded successfully and verified"
                             download_success=true
                             break
                         else
                             warn "Downloaded file is not a valid Debian package"
-                            warn "File content check: $(head -c 100 "$CUDA_KEYRING_PATH" 2>/dev/null | od -A x -t x1z -v | head -2)"
                             rm -f "$CUDA_KEYRING_PATH"
                         fi
                     else
@@ -1810,7 +1808,8 @@ CUDAEOF
             add_cuda_to_zshrc() {
                 local zshrc_path=$1
                 if [ -f "$zshrc_path" ]; then
-                    if ! grep -q "cuda/bin" "$zshrc_path"; then
+                    # Check BOTH the comment AND cuda/bin to prevent duplicates
+                    if ! grep -q "# CUDA Toolkit environment" "$zshrc_path" && ! grep -q "cuda/bin" "$zshrc_path"; then
                         cat >> "$zshrc_path" <<'ZSHCUDA'
 
 # CUDA Toolkit environment
@@ -1819,6 +1818,8 @@ export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export CUDA_HOME=/usr/local/cuda
 ZSHCUDA
                         log "✓ Added CUDA configuration to $zshrc_path"
+                    else
+                        log "✓ CUDA configuration already exists in $zshrc_path (skipped)"
                     fi
                 fi
             }
