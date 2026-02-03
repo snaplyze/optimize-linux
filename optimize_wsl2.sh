@@ -1689,30 +1689,82 @@ if $INSTALL_NVIDIA; then
             log "✓ contrib repository already enabled"
         fi
 
-        # Install cuda-keyring package (official method)
+        # Install cuda-keyring package (official method with robust error handling)
         CUDA_KEYRING_DEB="cuda-keyring_1.1-1_all.deb"
         CUDA_KEYRING_URL="https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DISTRO}/${CUDA_ARCH}/${CUDA_KEYRING_DEB}"
+        CUDA_KEYRING_PATH="/tmp/${CUDA_KEYRING_DEB}"
 
         log "Downloading CUDA keyring package..."
-        if wget -q --show-progress "$CUDA_KEYRING_URL" -O "/tmp/${CUDA_KEYRING_DEB}" 2>&1 | tee -a "$LOG_FILE"; then
-            log "Installing CUDA keyring package..."
-            if dpkg -i "/tmp/${CUDA_KEYRING_DEB}" 2>&1 | tee -a "$LOG_FILE"; then
-                log "✓ CUDA keyring installed successfully"
-            else
-                error "Failed to install CUDA keyring package"
-                warn "CUDA installation will likely fail"
-            fi
-            rm -f "/tmp/${CUDA_KEYRING_DEB}"
-        else
-            error "Failed to download CUDA keyring from: $CUDA_KEYRING_URL"
-            warn "Check internet connection and repository availability"
-        fi
+        log "URL: $CUDA_KEYRING_URL"
 
-        log "Updating APT repository cache..."
-        if apt-get update 2>&1 | tee -a "$LOG_FILE"; then
-            log "✓ APT cache updated successfully"
+        # Clean up any existing file
+        rm -f "$CUDA_KEYRING_PATH"
+
+        # Download with retry logic
+        download_success=false
+        for attempt in 1 2 3; do
+            log "Download attempt $attempt/3..."
+            if wget --timeout=30 --tries=3 -q --show-progress "$CUDA_KEYRING_URL" -O "$CUDA_KEYRING_PATH" 2>&1 | tee -a "$LOG_FILE"; then
+                # Verify file was downloaded and is not empty
+                if [[ -f "$CUDA_KEYRING_PATH" ]] && [[ -s "$CUDA_KEYRING_PATH" ]]; then
+                    file_size=$(stat -f%z "$CUDA_KEYRING_PATH" 2>/dev/null || stat -c%s "$CUDA_KEYRING_PATH" 2>/dev/null)
+                    log "Downloaded file size: ${file_size} bytes"
+
+                    # Check if file is a valid deb package (should be at least 1KB)
+                    if [[ $file_size -gt 1024 ]]; then
+                        # Verify it's actually a .deb file
+                        if file "$CUDA_KEYRING_PATH" | grep -q "Debian"; then
+                            log "✓ File downloaded successfully and verified"
+                            download_success=true
+                            break
+                        else
+                            warn "Downloaded file is not a valid Debian package"
+                            rm -f "$CUDA_KEYRING_PATH"
+                        fi
+                    else
+                        warn "Downloaded file is too small (${file_size} bytes)"
+                        rm -f "$CUDA_KEYRING_PATH"
+                    fi
+                else
+                    warn "Downloaded file is missing or empty"
+                fi
+            else
+                warn "wget failed with exit code $?"
+            fi
+
+            if [[ $attempt -lt 3 ]]; then
+                warn "Retrying in 3 seconds..."
+                sleep 3
+            fi
+        done
+
+        if [[ "$download_success" == "true" ]]; then
+            log "Installing CUDA keyring package..."
+            if dpkg -i "$CUDA_KEYRING_PATH" 2>&1 | tee -a "$LOG_FILE"; then
+                log "✓ CUDA keyring installed successfully"
+                rm -f "$CUDA_KEYRING_PATH"
+
+                log "Updating APT repository cache..."
+                if apt-get update 2>&1 | tee -a "$LOG_FILE"; then
+                    log "✓ APT cache updated successfully"
+                else
+                    warn "Failed to update package list after adding CUDA repository"
+                fi
+            else
+                error "Failed to install CUDA keyring package (dpkg returned $?)"
+                rm -f "$CUDA_KEYRING_PATH"
+                warn "CUDA installation will be skipped"
+                INSTALL_CUDA=false
+            fi
         else
-            warn "Failed to update package list"
+            error "Failed to download CUDA keyring after 3 attempts"
+            error "URL: $CUDA_KEYRING_URL"
+            warn "Please check:"
+            warn "  1. Internet connection"
+            warn "  2. Repository availability"
+            warn "  3. DNS resolution"
+            warn "CUDA installation will be skipped"
+            INSTALL_CUDA=false
         fi
 
         # Install CUDA packages
@@ -2108,53 +2160,34 @@ if $CONFIGURE_JOURNALD; then
     if has_systemd; then
         log "Configuring systemd-journald for WSL2..."
 
-        # Create journald config directory
         mkdir -p /etc/systemd/journald.conf.d
 
-        # Configure journald limits for WSL2
         cat > /etc/systemd/journald.conf.d/00-wsl2.conf <<'JOURNALD_EOF'
 [Journal]
-# Persistent storage limits (disk) - WSL2 optimized
 SystemMaxUse=100M
 SystemKeepFree=500M
 SystemMaxFileSize=10M
 SystemMaxFiles=10
-
-# Volatile storage limits (RAM) - WSL2 optimized
 RuntimeMaxUse=50M
 RuntimeKeepFree=100M
 RuntimeMaxFileSize=10M
 RuntimeMaxFiles=5
-
-# Retention policy - keep logs for 1 week
 MaxRetentionSec=1week
 MaxFileSec=1day
-
-# Compression to save space
 Compress=yes
-
-# Disable unnecessary forwarding (WSL2 doesn't need syslog)
 ForwardToSyslog=no
 ForwardToWall=no
-
-# Sync interval (5 minutes) - reduces I/O in WSL2
 SyncIntervalSec=5m
 JOURNALD_EOF
 
-        log "Restarting systemd-journald..."
         systemctl restart systemd-journald 2>&1 | tee -a "$LOG_FILE" || warn "Failed to restart journald"
-
-        log "Cleaning old journal entries..."
         journalctl --vacuum-size=100M --vacuum-time=1week 2>&1 | tee -a "$LOG_FILE" || true
 
-        # Show current disk usage
         journal_size=$(journalctl --disk-usage 2>/dev/null | grep -oP 'Archived and active journals take up \K[^.]+' || echo "unknown")
         log "✓ systemd-journald configured"
-        info "  Max disk usage: 100MB, Max RAM usage: 50MB"
-        info "  Current journal size: $journal_size"
-        info "  Retention: 1 week, Compression: enabled"
+        info "  Max: 100MB disk + 50MB RAM, Current: $journal_size"
     else
-        warn "systemd not available, skipping journald configuration"
+        warn "systemd not available"
     fi
 else
     log "Skipping systemd-journald configuration"
